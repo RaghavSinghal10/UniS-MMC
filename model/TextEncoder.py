@@ -31,6 +31,8 @@ class TextEncoder(nn.Module):
             model = BertModel
             self.tokenizer = tokenizer.from_pretrained(pretrained_dir+'/bert_base_uncased/', do_lower_case=True)
             self.model = model.from_pretrained(pretrained_dir+'/bert_base_uncased/')
+            # self.tokenizer = tokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
+            # self.model = model.from_pretrained('bert-base-uncased')
         elif text_encoder in ['bert_large']:
             tokenizer = BertTokenizer
             model = BertModel

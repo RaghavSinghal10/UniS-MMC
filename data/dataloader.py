@@ -141,6 +141,7 @@ class MMDataset(Dataset):
         if self.args.dataset in ['Food101']:
             id, text, annotation, label = self.df.loc[index]
             img_path = self.args.data_dir + '/images/' + self.labels[:-4] + '/' + annotation + '/' + id
+            #text_path = self.args.data_dir + '/texts_txt/' + annotation + '/' + id.replace(".jpg", ".txt")
             text_path = self.args.data_dir + '/texts_txt/' + annotation + '/' + id.replace(".jpg", ".txt")
             text = format_txt_file(open(text_path).read())
         else:

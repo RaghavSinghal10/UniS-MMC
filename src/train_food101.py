@@ -119,6 +119,9 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
                 text = text_input_ids.to(args.device), text_token_type_ids.to(args.device), text_attention_mask.to(args.device)
                 image = batch_image.to(args.device)
                 labels = batch_label.to(args.device).view(-1)
+
+                print(text.shape, image.shape, labels.shape)
+                exit()
                 # optimizer.zero_grad()
                 loss, loss_m, logit_m = model(text, image, None, labels)
                 # print(loss)

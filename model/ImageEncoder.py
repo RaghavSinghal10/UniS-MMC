@@ -28,6 +28,8 @@ class ImageEncoder(nn.Module):
         if image_encoder in ['vit_base']:
             self.tokenizer = tokenizer.from_pretrained(pretrained_dir+'/vit_base_224/')
             self.model = model.from_pretrained(pretrained_dir+'/vit_base_224/')
+            # self.tokenizer = tokenizer.from_pretrained('google/vit-base-patch16-224')
+            # self.model = model.from_pretrained('google/vit-base-patch16-224')
         else:
             self.tokenizer = tokenizer.from_pretrained(pretrained_dir+'/vit_large_224/')
             self.model = model.from_pretrained(pretrained_dir+'/vit_large_224/')
