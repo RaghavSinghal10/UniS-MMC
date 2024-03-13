@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from model.TextEncoder import *
-from model.ImageEncoder import *
+from model.TextEncoder_new import *
+from model.ImageEncoder_new import *
 
 __all__ = ['MMC']
 
@@ -25,17 +25,30 @@ class LinearLayer(nn.Module):
         x = self.clf(x)
         return x
 
-class MMC(nn.Module):
+class MMC_new(nn.Module):
     def __init__(self, args):
-        super(MMC, self).__init__()
+        super(MMC_new, self).__init__()
         # text subnets
         self.args = args
         if self.args.mmc not in ['T']:
-            self.image_encoder = ImageEncoder(pretrained_dir=args.pretrained_dir, image_encoder=args.image_encoder)
+
+            self.image_encoder_1 = ImageEncoder_1(pretrained_dir=args.pretrained_dir, image_encoder=args.image_encoder)
+            self.image_encoder_2 = ImageEncoder_2(pretrained_dir=args.pretrained_dir, image_encoder=args.image_encoder)
+
+            self.image_combine = nn.Linear(args.img_out_1 + args.img_out_2, args.img_out)
+
             self.image_classfier = Classifier(args.img_dropout, args.img_out, args.post_dim, args.output_dim)
+
         if self.args.mmc not in ['V']:
-            self.text_encoder = TextEncoder(pretrained_dir=args.pretrained_dir, text_encoder=args.text_encoder)
+
+            self.text_encoder_1 = TextEncoder_1(pretrained_dir=args.pretrained_dir, text_encoder=args.text_encoder)
+            self.text_encoder_2 = TextEncoder_2(pretrained_dir=args.pretrained_dir, text_encoder=args.text_encoder)
+
+            self.text_combine = nn.Linear(args.text_out_1 + args.text_out_2, args.text_out)
+
             self.text_classfier = Classifier(args.text_dropout, args.text_out, args.post_dim, args.output_dim)
+
+
         self.mm_classfier = Classifier(args.mm_dropout, args.text_out + args.img_out, args.post_dim, args.output_dim)
 
     def forward(self, text=None, image=None, data_list=None, label=None, infer=False):
@@ -44,9 +57,33 @@ class MMC(nn.Module):
         output_um = dict()
         UMLoss = dict()
 
-        text = self.text_encoder(text=text)
+        text_1 = self.text_encoder_1(text=text)
+        text_2 = self.text_encoder_2(text=text)
+
+        # concat text_1 and text_2
+        text = torch.cat((text_1, text_2), dim=0)
+
+        text = self.text_combine(text)
+
         image = torch.squeeze(image, 1)
-        image = self.image_encoder(pixel_values=image)
+
+        image_1 = self.image_encoder_1(pixel_values=image)
+        image_2 = self.image_encoder_2(pixel_values=image)
+
+        # concat image_1 and image_2
+        image = torch.cat((image_1, image_2), dim=0)
+
+        print("text 1 shape:", text_1.shape)
+        print("text 2 shape:", text_2.shape)
+        print("text shape:", text.shape)
+        print("image 1 shape:", image_1.shape)
+        print("image 2 shape:", image_2.shape)
+        print("image shape:", image.shape)
+
+        exit()
+
+        image = self.image_combine(image)
+
         output_text = self.text_classfier(text[:, 0, :])
         output_image = self.image_classfier(image[:, 0, :])
 

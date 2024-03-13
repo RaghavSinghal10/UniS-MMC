@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score
 import argparse
 import wandb
 from model.model import MMC
+from model.model_new import MMC_new
 from data.dataloader import MMDataLoader
 from src.metrics import collect_metrics
 from src.functions import save_checkpoint, load_checkpoint, dict_to_str, count_parameters
@@ -62,6 +63,9 @@ parser.add_argument('--fig_save_dir', type=str, default='Path/To/results/imgs', 
 parser.add_argument('--logs_dir', type=str, default='Path/To/results/logs', help='path to log results.')  # NO
 parser.add_argument('--local_rank', default=-1, type=int, help='node rank for distributed training')
 parser.add_argument('--seeds', nargs='+', type=int, help='set seeds for multiple runs!')
+parser.add_argument('--model_path', type=str, default='./Path/To/results/models', help='path to load model parameters')
+parser.add_argument('--save_model', type=bool, default=True, help='save model or not')
+parser.add_argument('--use_multiple_encoders', action='store_true', help='use multiple encoders or not')
 # parser.add_argument('--num_epoch', type=int, default=25, help='num_epoch')
 # parser.add_argument('--lr_patience', type=int, default=3, help='lr_patience')
 # parser.add_argument('--lr_factor', type=float, default=0.2, help='lr_factor')
@@ -98,9 +102,10 @@ print(args)
 
 # To decide the lr scheduler
 def get_scheduler(optimizer, args):
-    return optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
-    )
+    # return optim.lr_scheduler.ReduceLROnPlateau(
+    #     optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
+
+    return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epoch)
 
 # To decide the optimizer
 def get_optimizer(model, args):
@@ -149,14 +154,28 @@ def main():
 
     train_loader, valid_loader, test_loader = MMDataLoader(args)
 
-    if args.local_rank in [-1]:
-        model = DataParallel(MMC(args))
-        model = model.to(args.device)
+    # print number of train, valid, test samples
+    print(f"Train: {len(train_loader.dataset)}, Valid: {len(valid_loader.dataset)}, Test: {len(test_loader.dataset)}")
+
+    if args.use_multiple_encoders:
+        if args.local_rank in [-1]:
+            model = DataParallel(MMC_new(args))
+            model = model.to(args.device)
+        else:
+            model = MMC_new(args).to(args.device)
+            model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+                                                        output_device=args.local_rank,
+                                                        find_unused_parameters=True)
+            
     else:
-        model = MMC(args).to(args.device)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
-                                                    output_device=args.local_rank,
-                                                    find_unused_parameters=True)
+        if args.local_rank in [-1]:
+            model = DataParallel(MMC(args))
+            model = model.to(args.device)
+        else:
+            model = MMC(args).to(args.device)
+            model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+                                                        output_device=args.local_rank,
+                                                        find_unused_parameters=True)
         
     if args.local_rank in [-1, 0]:
         print(f'\nThe model has {count_parameters(model)} trainable parameters')
@@ -216,7 +235,7 @@ def main():
             y_pred = []
             y_true = []
 
-            for i, (batch_image, text_input_ids, text_token_type_ids, text_attention_mask, batch_label) in enumerate(train_loader):
+            for i, (batch_image, text_input_ids, text_token_type_ids, text_attention_mask, batch_label) in enumerate(test_loader):
                     
                 text = text_input_ids.cuda(), text_token_type_ids.cuda(), text_attention_mask.cuda()
                 image = batch_image.cuda()
@@ -238,6 +257,9 @@ def main():
             wandb.log({"test_acc": accuracy_test, "max_test_acc": max_accuracy})
 
             print(f'Accuracy: {accuracy_test} | Max Accuracy: {max_accuracy}')
+
+    if args.save_model:
+        save_checkpoint(model, args.best_model_save_path)
 
 if __name__ == '__main__':
     main()

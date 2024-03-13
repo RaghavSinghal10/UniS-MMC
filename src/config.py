@@ -57,6 +57,13 @@ class Config():
 
                     'text_out': 768,
                     'img_out': 768,
+
+                    'text_out_1': 768,
+                    'img_out_1': 768,
+
+                    'text_out_2': 768,
+                    'img_out_2': 768,
+
                     'post_dim': 256,
                     'output_dim': 101,
 
