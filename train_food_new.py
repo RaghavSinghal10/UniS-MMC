@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score
 import argparse
 import wandb
 from model.model import MMC
+from model.model_new import MMC_new
 from data.dataloader import MMDataLoader
 from src.metrics import collect_metrics
 from src.functions import save_checkpoint, load_checkpoint, dict_to_str, count_parameters
@@ -23,8 +24,7 @@ __all__ = ['TrainModule']
 
 torch.cuda.current_device()
 
-
-os.environ['TORCH_USE_CUDA_DSA'] = '1'
+# os.environ['TORCH_USE_CUDA_DSA'] = '1'
 
 wandb.init(project='MMC')
 
@@ -41,11 +41,17 @@ parser.add_argument('--min_epoch', type=int, default=1, help='min_epoch')
 parser.add_argument('--valid_step', type=int, default=50, help='valid_step')              
 parser.add_argument('--max_length', type=int, default=512, help='max_length')
 
-parser.add_argument('--text_encoder', type=str, default='bert_base', help='bert_base/roberta_base/bert_large')
-parser.add_argument('--image_encoder', type=str, default='vit_base', help='vit_base/vit_large')
+parser.add_argument('--text_encoder_1', type=str, default='deberta_base', help='bert_base/roberta_base/bert_large')
+parser.add_argument('--text_encoder_2', type=str, default='roberta_base', help='bert_base/roberta_base/bert_large')
+parser.add_argument('--image_encoder_1', type=str, default='vit_base', help='vit_base/vit_large')
+parser.add_argument('--image_encoder_2', type=str, default='clip_vit_base', help='vit_base/vit_large')
 
 parser.add_argument('--text_out', type=int, default=768, help='text_out')
-parser.add_argument('--img_out', type=int, default=768, help='img_out')    
+parser.add_argument('--text_out_1', type=int, default=768, help='text_out')
+parser.add_argument('--text_out_2', type=int, default=768, help='text_out')
+parser.add_argument('--img_out', type=int, default=768, help='img_out')
+parser.add_argument('--img_out_1', type=int, default=768, help='img_out')   
+parser.add_argument('--img_out_2', type=int, default=768, help='img_out')    
 
 parser.add_argument('--post_dim', type=int, default=256, help='post_dim')
 parser.add_argument('--output_dim', type=int, default=101, help='output_dim')
@@ -59,6 +65,7 @@ parser.add_argument('--lr_mm_cls', type=float, default=1e-4, help='--lr_mm_cls')
 parser.add_argument('--text_dropout', type=float, default=0.1, help='--text_dropout')
 parser.add_argument('--img_dropout', type=float, default=0.1, help='--img_dropout')
 parser.add_argument('--mm_dropout', type=float, default=0.0, help='--mm_dropout')
+
 parser.add_argument('--nplot', type=str, default='', help='MTAV')
 parser.add_argument('--data_dir', type=str, default='./datasets/', help='support wmsa') 
 parser.add_argument('--test_only', type=bool, default=False,  help='train+test or test only')
@@ -71,15 +78,7 @@ parser.add_argument('--local_rank', default=-1, type=int, help='node rank for di
 parser.add_argument('--seeds', nargs='+', type=int, help='set seeds for multiple runs!')
 parser.add_argument('--model_path', type=str, default='./Path/To/results/models', help='path to load model parameters')
 parser.add_argument('--save_model', type=bool, default=True, help='save model or not')
-# parser.add_argument('--num_epoch', type=int, default=25, help='num_epoch')
-# parser.add_argument('--lr_patience', type=int, default=3, help='lr_patience')
-# parser.add_argument('--lr_factor', type=float, default=0.2, help='lr_factor')
-# parser.add_argument('--weight_decay_tfm', type=float, default=0.001, help='weight_decay_tfm')
-# parser.add_argument('--weight_decay_other', type=float, default=0.0001, help='weight_decay_other')
-# parser.add_argument('--batch_gradient', type=int, default=128, help='batch_gradient')
-# parser.add_argument('--num_workers', type=int, default=24, help='num_workers')
-# parser.add_argument('--post_dim', type=int, default=256, help='post_dim')
-# parser.add_argument('--output_dim', type=int, default=101, help='output_dim')
+
 
 torch.autograd.set_detect_anomaly(True)
 torch.cuda.empty_cache()
@@ -87,6 +86,7 @@ torch.cuda.empty_cache()
 args = parser.parse_args()
 config = Config(args)
 args = config.get_config()
+
 
 if args.local_rank == -1:
     device = torch.device("cuda")
@@ -99,7 +99,6 @@ args.device = device
 args.data_dir = os.path.join(args.data_dir, args.dataset)
 
 wandb.config.update(args)
-
 
 print(args)
 
@@ -114,51 +113,72 @@ def get_scheduler(optimizer, args):
 
 # To decide the optimizer
 def get_optimizer(model, args):
-    # if args.local_rank in [-1]:
-    if args.mmc not in ['V']: #Goes in both if conditions with train_food.py
 
-        text_enc_param = list(model.module.text_encoder.named_parameters())
-        text_clf_param = list(model.module.text_classfier.parameters())
-    if args.mmc not in ['T']:
+    text_enc_1_param = list(model.module.text_encoder_1.named_parameters())
+    text_enc_2_param = list(model.module.text_encoder_2.named_parameters())
+    text_combine_param = list(model.module.text_combine.parameters())
+    text_clf_param = list(model.module.text_classfier.parameters())
 
-        img_enc_param = list(model.module.image_encoder.parameters())
-        img_clf_param = list(model.module.image_classfier.parameters())
+
+    # a = list(model.module.image_encoder_1.parameters())
+    # print("model.module.named_paramters value: " ,a[0] )  
+    # print("model.module.named_paramters length: " , len(a) ) #200
+    # print("model.module.named_paramters type: " ,type(a)) #list
+    # print("model.module.named_paramters type of one particular element: " ,type(a[0])) #torch.nn.paramater.Parameter
+
+    img_enc_1_param = list(model.module.image_encoder_1.parameters())
+    img_enc_2_param = list(model.module.image_encoder_2.parameters())
+    img_combine_param = list(model.module.image_combine.parameters())
+    img_clf_param = list(model.module.image_classfier.parameters())
+
     mm_clf_param = list(model.module.mm_classfier.parameters())
 
-    print(type(img_enc_param[1]))
-    print(type(img_clf_param[1]))   
-    print(type(text_enc_param[1]))
-    print(type(text_clf_param[1]))
-    print(type(mm_clf_param[1]))
-    exit()
+    # print("image encoder: " ,type(img_enc_1_param[1]))
+    # print("image classfication: ", type(img_clf_param[1]))   
+    # print("text encoder: ", type(text_enc_1_param[1]))
+    # print("text classification: ", type(text_clf_param[1]))
+    # print("mm classification: " , type(mm_clf_param[1]))
+    # print("combine param classification:" , type(text_combine_param[1]))
+    # print("image combine param: ", type(img_combine_param[1]))
+    
+    # exit()
+
+    # print("text enc 1 params:", type(text_enc_1_param))
+    # print("text enc 2 params:", type(text_enc_2_param))
+    # print("text combine params:", type(text_combine_param))
+    # print("text clf params:", type(text_clf_param))
+
+    # print("img enc 1 params:", type(img_enc_1_param))
+    # print("img enc 2 params:", type(img_enc_2_param))
+    # print("img combine params:", type(img_combine_param))
+    # print("img clf params:", type(img_clf_param))
+
+    # print("mm clf params:", type(mm_clf_param))
 
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
-    if args.mmc in ['V']:
-        optimizer_grouped_parameters = [
-            {"params": img_enc_param, "weight_decay": args.weight_decay_tfm, 'lr': args.lr_img_tfm},
-            {"params": img_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_img_cls},
-            {"params": mm_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_mm_cls},
-        ]
-    elif args.mmc in ['T']:
-        optimizer_grouped_parameters = [
-            {"params": [p for n, p in text_enc_param if not any(nd in n for nd in no_decay)],
-             "weight_decay": args.weight_decay_tfm, 'lr': args.lr_text_tfm},
-            {"params": [p for n, p in text_enc_param if any(nd in n for nd in no_decay)], "weight_decay": 0.0,
-             'lr': args.lr_text_tfm},
-            {"params": text_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_text_cls},
-            {"params": mm_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_mm_cls},
-        ]
-    else:
-        optimizer_grouped_parameters = [
-            {"params": [p for n, p in text_enc_param if not any(nd in n for nd in no_decay)],
-             "weight_decay": args.weight_decay_tfm, 'lr': args.lr_text_tfm},
-            {"params": [p for n, p in text_enc_param if any(nd in n for nd in no_decay)], "weight_decay": 0.0,
-             'lr': args.lr_text_tfm},
-            {"params": text_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_text_cls},
-            {"params": img_enc_param, "weight_decay": args.weight_decay_tfm, 'lr': args.lr_img_tfm},
-            {"params": img_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_img_cls},
-            {"params": mm_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_mm_cls},
-        ]
+
+ 
+    optimizer_grouped_parameters = [
+
+        {"params": [p for n, p in text_enc_1_param if not any(nd in n for nd in no_decay)],
+            "weight_decay": args.weight_decay_tfm, 'lr': args.lr_text_tfm},
+        {"params": [p for n, p in text_enc_1_param if any(nd in n for nd in no_decay)], "weight_decay": 0.0,
+            'lr': args.lr_text_tfm},
+        {"params": [p for n, p in text_enc_2_param if not any(nd in n for nd in no_decay)],
+            "weight_decay": args.weight_decay_tfm, 'lr': args.lr_text_tfm},
+        {"params": [p for n, p in text_enc_2_param if any(nd in n for nd in no_decay)], "weight_decay": 0.0,
+            'lr': args.lr_text_tfm},
+        {"params": text_combine_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_text_tfm},
+        {"params": text_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_text_cls},
+
+        {"params": img_enc_1_param, "weight_decay": args.weight_decay_tfm, 'lr': args.lr_img_tfm},
+        {"params": img_enc_2_param, "weight_decay": args.weight_decay_tfm, 'lr': args.lr_img_tfm},
+        {"params": img_combine_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_img_tfm},
+        {"params": img_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_img_cls},
+
+        {"params": mm_clf_param, "weight_decay": args.weight_decay_other, 'lr': args.lr_mm_cls},
+    ]
+
     optimizer = optim.Adam(optimizer_grouped_parameters)
 
     return optimizer
@@ -171,16 +191,15 @@ def main():
     # print number of train, valid, test samples
     print(f"Train: {len(train_loader.dataset)}, Valid: {len(valid_loader.dataset)}, Test: {len(test_loader.dataset)}")
 
-            
-
     if args.local_rank in [-1]:
-        model = DataParallel(MMC(args))
+        model = DataParallel(MMC_new(args))
         model = model.to(args.device)
     else:
-        model = MMC(args).to(args.device)
+        model = MMC_new(args).to(args.device)
         model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                     output_device=args.local_rank,
                                                     find_unused_parameters=True)
+            
         
     if args.local_rank in [-1, 0]:
         print(f'\nThe model has {count_parameters(model)} trainable parameters')

@@ -6,8 +6,6 @@ import torch.nn.functional as F
 from model.TextEncoder_new import *
 from model.ImageEncoder_new import *
 
-__all__ = ['MMC']
-
 
 def xavier_init(m):
     if type(m) == nn.Linear:
@@ -27,27 +25,20 @@ class LinearLayer(nn.Module):
 
 class MMC_new(nn.Module):
     def __init__(self, args):
+
         super(MMC_new, self).__init__()
         # text subnets
         self.args = args
-        if self.args.mmc not in ['T']:
 
-            self.image_encoder_1 = ImageEncoder_1(pretrained_dir=args.pretrained_dir, image_encoder=args.image_encoder)
-            self.image_encoder_2 = ImageEncoder_2(pretrained_dir=args.pretrained_dir, image_encoder=args.image_encoder)
+        self.image_encoder_1 = ImageEncoder_New(pretrained_dir=args.pretrained_dir, image_encoder=args.image_encoder_1)
+        self.image_encoder_2 = ImageEncoder_New(pretrained_dir=args.pretrained_dir, image_encoder=args.image_encoder_2)
+        self.image_combine = nn.Linear(args.img_out_1 + args.img_out_2, args.img_out)
+        self.image_classfier = Classifier(args.img_dropout, args.img_out, args.post_dim, args.output_dim)
 
-            self.image_combine = nn.Linear(args.img_out_1 + args.img_out_2, args.img_out)
-
-            self.image_classfier = Classifier(args.img_dropout, args.img_out, args.post_dim, args.output_dim)
-
-        if self.args.mmc not in ['V']:
-
-            self.text_encoder_1 = TextEncoder_1(pretrained_dir=args.pretrained_dir, text_encoder=args.text_encoder)
-            self.text_encoder_2 = TextEncoder_2(pretrained_dir=args.pretrained_dir, text_encoder=args.text_encoder)
-
-            self.text_combine = nn.Linear(args.text_out_1 + args.text_out_2, args.text_out)
-
-            self.text_classfier = Classifier(args.text_dropout, args.text_out, args.post_dim, args.output_dim)
-
+        self.text_encoder_1 = TextEncoder_New(pretrained_dir=args.pretrained_dir, text_encoder=args.text_encoder_1)
+        self.text_encoder_2 = TextEncoder_New(pretrained_dir=args.pretrained_dir, text_encoder=args.text_encoder_2)
+        self.text_combine = nn.Linear(args.text_out_1 + args.text_out_2, args.text_out)
+        self.text_classfier = Classifier(args.text_dropout, args.text_out, args.post_dim, args.output_dim)
 
         self.mm_classfier = Classifier(args.mm_dropout, args.text_out + args.img_out, args.post_dim, args.output_dim)
 
@@ -61,9 +52,11 @@ class MMC_new(nn.Module):
         text_2 = self.text_encoder_2(text=text)
 
         # concat text_1 and text_2
-        text = torch.cat((text_1, text_2), dim=0)
+        text_concat = torch.cat((text_1[:,0,:], text_2[:,0,:]), dim=1)
+        text_combine = self.text_combine(text_concat)
 
-        text = self.text_combine(text)
+        output_text = self.text_classfier(text_combine) 
+
 
         image = torch.squeeze(image, 1)
 
@@ -71,24 +64,28 @@ class MMC_new(nn.Module):
         image_2 = self.image_encoder_2(pixel_values=image)
 
         # concat image_1 and image_2
-        image = torch.cat((image_1, image_2), dim=0)
+        image_concat = torch.cat((image_1[:,0,:], image_2[:,0,:]), dim=1)
+        image_combine = self.image_combine(image_concat)
 
-        print("text 1 shape:", text_1.shape)
-        print("text 2 shape:", text_2.shape)
-        print("text shape:", text.shape)
-        print("image 1 shape:", image_1.shape)
-        print("image 2 shape:", image_2.shape)
-        print("image shape:", image.shape)
+        output_image = self.image_classfier(image_combine)
 
-        exit()
-
-        image = self.image_combine(image)
-
-        output_text = self.text_classfier(text[:, 0, :])
-        output_image = self.image_classfier(image[:, 0, :])
-
-        fusion = torch.cat([text[:, 0, :], image[:, 0, :]], dim=-1)
+        fusion = torch.cat([text_combine, image_combine], dim=-1)
         output_mm = self.mm_classfier(fusion)
+
+        # print("text 1 shape:", text_1.shape)
+        # print("text 2 shape:", text_2.shape)
+        # print("text concat shape:", text_concat.shape)
+        # print("text combine shape:", text_combine.shape)
+        # print("output text shape:", output_text.shape)
+        # print("image 1 shape:", image_1.shape)
+        # print("image 2 shape:", image_2.shape)
+        # print("image concat shape:", image_concat.shape)
+        # print("image combine shape:", image_combine.shape)
+        # print("output image shape:", output_image.shape)
+        # print("fusion shape:", fusion.shape)
+        # print("output mm shape:", output_mm.shape)
+
+        # exit()
 
         if infer:
             return output_mm
@@ -100,19 +97,20 @@ class MMC_new(nn.Module):
             return MMLoss_sum, MMLoss_m, output_mm
 
         if self.args.mmc in ['SupMMC']:
-            mmcLoss = self.mmc_2(text[:, 0, :], image[:, 0, :], None, None, label)
+            mmcLoss = self.mmc_2(text_combine, image_combine, None, None, label)
             MMLoss_sum = MMLoss_m + 0.1 * mmcLoss
             return MMLoss_sum, MMLoss_m, output_mm
 
         if self.args.mmc in ['UnSupMMC']:
-            mmcLoss = self.mmc_2(text[:, 0, :], image[:, 0, :], None, None, None)
+            mmcLoss = self.mmc_2(text_combine, image_combine, None, None, None)
             MMLoss_sum = MMLoss_m + 0.1 * mmcLoss
             return MMLoss_sum, MMLoss_m, output_mm
 
         MMLoss_text = torch.mean(criterion(output_text, label))
         MMLoss_image = torch.mean(criterion(output_image, label))
-        mmcLoss = self.mmc_2(text[:, 0, :], image[:, 0, :], output_text, output_image, label)
+        mmcLoss = self.mmc_2(text_combine, image_combine, output_text, output_image, label)
         MMLoss_sum = MMLoss_text + MMLoss_image + MMLoss_m + 0.1 * mmcLoss
+
 
         return MMLoss_sum, MMLoss_m, output_mm
 
