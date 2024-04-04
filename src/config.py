@@ -39,7 +39,7 @@ class Config():
                     'batch_gradient': 128, #60,
                     'max_length': 512,
                     'num_workers': 24,
-                    'num_epoch': 25,
+                    'num_epoch': 100,
                     'patience': 3,
                     'min_epoch': 2,
                     'valid_step': 50, #100,

@@ -25,9 +25,9 @@ class LinearLayer(nn.Module):
         x = self.clf(x)
         return x
 
-class MMC(nn.Module):
+class MMC_Cross(nn.Module):
     def __init__(self, args):
-        super(MMC, self).__init__()
+        super(MMC_Cross, self).__init__()
         # text subnets
         self.args = args
         if self.args.mmc not in ['T']:
@@ -38,6 +38,14 @@ class MMC(nn.Module):
             self.text_classfier = Classifier(args.text_dropout, args.text_out, args.post_dim, args.output_dim)
         self.mm_classfier = Classifier(args.mm_dropout, args.text_out + args.img_out, args.post_dim, args.output_dim)
 
+        self.wk_text = nn.Linear(args.text_out, args.text_out)
+        self.wq_text = nn.Linear(args.text_out, args.text_out)
+        self.wv_text = nn.Linear(args.text_out, args.text_out)
+
+        self.wk_image = nn.Linear(args.img_out, args.img_out)
+        self.wq_image = nn.Linear(args.img_out, args.img_out)
+        self.wv_image = nn.Linear(args.img_out, args.img_out)
+
     def forward(self, text=None, image=None, data_list=None, label=None, infer=False):
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
         feature_um = dict()
@@ -47,11 +55,51 @@ class MMC(nn.Module):
         text = self.text_encoder(text=text)
         image = torch.squeeze(image, 1)
         image = self.image_encoder(pixel_values=image)
-        output_text = self.text_classfier(text[:, 0, :])
-        output_image = self.image_classfier(image[:, 0, :])
+
+        # print("text shape: ", text.shape)
+        # print("image shape: ", image.shape)
+
+        q_text = self.wq_text(text)
+        k_text = self.wk_text(text)
+        v_text = self.wv_text(text)
+
+        q_image = self.wq_image(image)
+        k_image = self.wk_image(image)
+        v_image = self.wv_image(image)
+
+        # print("q_text shape: ", q_text.shape)
+        # print("k_text shape: ", k_text.shape)
+        # print("v_text shape: ", v_text.shape)
+
+        # print("q_image shape: ", q_image.shape)
+        # print("k_image shape: ", k_image.shape)
+        # print("v_image shape: ", v_image.shape)
+
+        # Cross Attention
+        attn_text = torch.matmul(q_text, k_image.transpose(1, 2))
+        attn_text = F.softmax(attn_text / np.sqrt(k_image.size()[-1]), dim=-1)
+        # print("attn_text shape: ", attn_text.shape)
+        text_attended = torch.matmul(attn_text, v_image)
+        # print("text_attended shape: ", text_attended.shape)
+
+        attn_image = torch.matmul(q_image, k_text.transpose(1, 2))
+        attn_image = F.softmax(attn_image / np.sqrt(k_image.size()[-1]), dim=-1)
+        attn_image = F.softmax(attn_image, dim=-1)
+        # print("attn_image shape: ", attn_image.shape)
+        image_attended = torch.matmul(attn_image, v_text)
+        # print("image_attended shape: ", image_attended.shape)
+
+        output_text = self.text_classfier(text_attended[:, 0, :])
+        output_image = self.image_classfier(image_attended[:, 0, :])
+
+        # print("output_text shape: ", output_text.shape)
+        # print("output_image shape: ", output_image.shape)
 
         fusion = torch.cat([text[:, 0, :], image[:, 0, :]], dim=-1)
         output_mm = self.mm_classfier(fusion)
+
+        # print("output_mm shape: ", output_mm.shape)
+        # print("fusion shape: ", fusion.shape)
 
         if infer:
             return output_mm

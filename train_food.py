@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score
 import argparse
 import wandb
 from model.model import MMC
+from model.model_cross import MMC_Cross
 from data.dataloader import MMDataLoader
 from src.metrics import collect_metrics
 from src.functions import save_checkpoint, load_checkpoint, dict_to_str, count_parameters
@@ -71,7 +72,8 @@ parser.add_argument('--local_rank', default=-1, type=int, help='node rank for di
 parser.add_argument('--seeds', nargs='+', type=int, help='set seeds for multiple runs!')
 parser.add_argument('--model_path', type=str, default='./Path/To/results/models', help='path to load model parameters')
 parser.add_argument('--save_model', type=bool, default=True, help='save model or not')
-# parser.add_argument('--num_epoch', type=int, default=25, help='num_epoch')
+parser.add_argument('--cross_attention', action='store_true', help='cross attention or not')
+parser.add_argument('--num_epoch', type=int, default=25, help='num_epoch')
 # parser.add_argument('--lr_patience', type=int, default=3, help='lr_patience')
 # parser.add_argument('--lr_factor', type=float, default=0.2, help='lr_factor')
 # parser.add_argument('--weight_decay_tfm', type=float, default=0.001, help='weight_decay_tfm')
@@ -130,7 +132,6 @@ def get_optimizer(model, args):
     print(type(text_enc_param[1]))
     print(type(text_clf_param[1]))
     print(type(mm_clf_param[1]))
-    exit()
 
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
     if args.mmc in ['V']:
@@ -174,13 +175,23 @@ def main():
             
 
     if args.local_rank in [-1]:
-        model = DataParallel(MMC(args))
-        model = model.to(args.device)
+        if args.cross_attention:
+            model = DataParallel(MMC_Cross(args))
+            model = model.to(args.device)
+        else:
+            model = DataParallel(MMC(args))
+            model = model.to(args.device)
     else:
-        model = MMC(args).to(args.device)
-        model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+        if args.cross_attention:
+            model = MMC_Cross(args).to(args.device)
+            model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                     output_device=args.local_rank,
                                                     find_unused_parameters=True)
+        else:              
+            model = MMC(args).to(args.device)
+            model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+                                                        output_device=args.local_rank,
+                                                        find_unused_parameters=True)
         
     if args.local_rank in [-1, 0]:
         print(f'\nThe model has {count_parameters(model)} trainable parameters')
