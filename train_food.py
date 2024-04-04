@@ -74,6 +74,7 @@ parser.add_argument('--model_path', type=str, default='./Path/To/results/models'
 parser.add_argument('--save_model', type=bool, default=True, help='save model or not')
 parser.add_argument('--cross_attention', action='store_true', help='cross attention or not')
 parser.add_argument('--num_epoch', type=int, default=25, help='num_epoch')
+parser.add_argument('--seed', type=int, default=42, help='seed')
 # parser.add_argument('--lr_patience', type=int, default=3, help='lr_patience')
 # parser.add_argument('--lr_factor', type=float, default=0.2, help='lr_factor')
 # parser.add_argument('--weight_decay_tfm', type=float, default=0.001, help='weight_decay_tfm')
@@ -90,6 +91,11 @@ args = parser.parse_args()
 config = Config(args)
 args = config.get_config()
 
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
+torch.cuda.manual_seed(args.seed)
+torch.cuda.manual_seed_all(args.seed)
+
 if args.local_rank == -1:
     device = torch.device("cuda")
 else:
@@ -102,21 +108,15 @@ args.data_dir = os.path.join(args.data_dir, args.dataset)
 
 wandb.config.update(args)
 
-
 print(args)
-
 
 
 # To decide the lr scheduler
 def get_scheduler(optimizer, args):
-    # return optim.lr_scheduler.ReduceLROnPlateau(
-    #     optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
-
     return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epoch)
 
 # To decide the optimizer
 def get_optimizer(model, args):
-    # if args.local_rank in [-1]:
     if args.mmc not in ['V']: #Goes in both if conditions with train_food.py
 
         text_enc_param = list(model.module.text_encoder.named_parameters())
@@ -218,17 +218,10 @@ def main():
                 image = batch_image.to(args.device)
                 labels = batch_label.to(args.device).view(-1)
 
-                # print(text.shape, image.shape, labels.shape)
-                # exit()
-                # print((i+1), (i+1)%gradient_accumulation_steps)
-                # optimizer.zero_grad()
                 loss, loss_m, logit_m = model(text, image, None, labels)
                 # print(loss)
                 loss = loss.sum() # / gradient_accumulation_steps
                 loss.backward()
-                
-                # optimizer.step()
-                # train_loss_m += loss_m.sum().item()
 
                 if (i+1) % gradient_accumulation_steps == 0:
                     optimizer.step()
@@ -238,11 +231,9 @@ def main():
 
                 wandb.log({"loss": loss})
 
-
         scheduler.step()
 
         print('[%d] loss: %.3f' % (epoch + 1, running_loss / len(train_loader)))
-
 
         model.eval()
         
