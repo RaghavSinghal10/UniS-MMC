@@ -79,39 +79,47 @@ class MMC(nn.Module):
         # output_um = dict()
         # UMLoss = dict()
 
-        text = self.text_encoder(text=text)
-        image = torch.squeeze(image, 1)
+        if not infer:
+            text = self.text_encoder(text=text)
+            image = torch.squeeze(image, 1)
 
-        if self.args.image_embedding_mixup:
-            image = self.image_encoder(pixel_values=image)
+            if self.args.image_embedding_mixup:
+                image = self.image_encoder(pixel_values=image)
 
-        if not self.args.image_mixup and not self.args.text_mixup:
-            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = image, text, label, label, 1
-        
-        elif self.args.image_mixup and not self.args.text_mixup:
-            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
-                                                                             mixup_text=self.args.text_mixup, use_cuda=True)
-            mixed_text_embedding = text
+            if not self.args.image_mixup and not self.args.text_mixup:
+                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = image, text, label, label, 1
+            
+            elif self.args.image_mixup and not self.args.text_mixup:
+                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
+                                                                                mixup_text=self.args.text_mixup, use_cuda=True)
+                mixed_text_embedding = text
 
-        elif not self.args.image_mixup and self.args.text_mixup:
-            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
-                                                                             mixup_text=self.args.text_mixup, use_cuda=True)
-            mixed_input_image = image
+            elif not self.args.image_mixup and self.args.text_mixup:
+                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
+                                                                                mixup_text=self.args.text_mixup, use_cuda=True)
+                mixed_input_image = image
 
-        else:
-            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
-                                                                             mixup_text=self.args.text_mixup, use_cuda=True)
+            else:
+                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
+                                                                                mixup_text=self.args.text_mixup, use_cuda=True)
 
-        if not self.args.image_embedding_mixup:
-            image = self.image_encoder(pixel_values=mixed_input_image)
-        
-        output_text = self.text_classfier(mixed_text_embedding[:, 0, :])
-        output_image = self.image_classfier(image[:, 0, :])
+            if not self.args.image_embedding_mixup:
+                image = self.image_encoder(pixel_values=mixed_input_image)
+            
+            output_text = self.text_classfier(mixed_text_embedding[:, 0, :])
+            output_image = self.image_classfier(image[:, 0, :])
 
-        fusion = torch.cat([text[:, 0, :], image[:, 0, :]], dim=-1)
-        output_mm = self.mm_classfier(fusion)
+            fusion = torch.cat([text[:, 0, :], image[:, 0, :]], dim=-1)
+            output_mm = self.mm_classfier(fusion)
 
         if infer:
+            text = self.text_encoder(text=text)
+            image = torch.squeeze(image, 1)
+            image = self.image_encoder(pixel_values=image)
+            output_text = self.text_classfier(text[:, 0, :])
+            output_image = self.image_classfier(image[:, 0, :])
+            fusion = torch.cat([text[:, 0, :], image[:, 0, :]], dim=-1)
+            output_mm = self.mm_classfier(fusion)
             return output_mm
 
         if not self.args.image_mixup and not self.args.text_mixup:    
