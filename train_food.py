@@ -75,8 +75,8 @@ parser.add_argument('--save_model', type=bool, default=True, help='save model or
 parser.add_argument('--cross_attention', action='store_true', help='cross attention or not')
 parser.add_argument('--num_epoch', type=int, default=25, help='num_epoch')
 parser.add_argument('--seed', type=int, default=42, help='seed')
-# parser.add_argument('--lr_patience', type=int, default=3, help='lr_patience')
-# parser.add_argument('--lr_factor', type=float, default=0.2, help='lr_factor')
+parser.add_argument('--lr_patience', type=int, default=3, help='lr_patience')
+parser.add_argument('--lr_factor', type=float, default=0.2, help='lr_factor')
 # parser.add_argument('--weight_decay_tfm', type=float, default=0.001, help='weight_decay_tfm')
 # parser.add_argument('--weight_decay_other', type=float, default=0.0001, help='weight_decay_other')
 # parser.add_argument('--batch_gradient', type=int, default=128, help='batch_gradient')
@@ -111,9 +111,15 @@ wandb.config.update(args)
 print(args)
 
 
+# # To decide the lr scheduler
+# def get_scheduler(optimizer, args):
+#     return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epoch)
+
 # To decide the lr scheduler
 def get_scheduler(optimizer, args):
-    return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epoch)
+    return optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
+    )
 
 # To decide the optimizer
 def get_optimizer(model, args):
@@ -198,6 +204,7 @@ def main():
 
     optimizer = get_optimizer(model, args)
     scheduler = get_scheduler(optimizer, args)
+    
 
     train_loss_m = 0
     gradient_accumulation_steps = int(args.batch_gradient / args.batch_size)
@@ -229,11 +236,13 @@ def main():
                 
                 running_loss += loss.detach().cpu().item()
 
-                wandb.log({"loss": loss})
+                wandb.log({"training loss": loss})
 
         scheduler.step()
 
-        print('[%d] loss: %.3f' % (epoch + 1, running_loss / len(train_loader)))
+        print('[%d] training loss: %.3f' % (epoch + 1, running_loss / len(train_loader)))
+
+
 
         model.eval()
         
@@ -270,3 +279,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+    

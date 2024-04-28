@@ -16,19 +16,19 @@
 #         except Exception as e:
 #             continue
 
-# # For ViT model
+# For ViT model
 # from transformers import ViTFeatureExtractor
-# feature_extractor = ViTFeatureExtractor.from_pretrained('google/vit-base-patch16-224')
-# model = ViTModel.from_pretrained('google/vit-base-patch16-224')
-# model.save_pretrained("./pretrained_models/vit-base")
-# feature_extractor.save_pretrained("./pretrained_models/vit-base")
+# feature_extractor = ViTFeatureExtractor.from_pretrained('google/vit-large-patch16-224')
+# model = ViTModel.from_pretrained('google/vit-large-patch16-224')
+# model.save_pretrained("./pretrained_models/vit-large")
+# feature_extractor.save_pretrained("./pretrained_models/vit-large")
 
 # # For CLIP model
-from transformers import AutoProcessor, CLIPModel
-model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-model.save_pretrained("./pretrained_models/clip-vit-base")
-processor = AutoProcessor.from_pretrained("openai/clip-vit-base-patch32")
-processor.save_pretrained("./pretrained_models/clip-vit-base")
+# from transformers import AutoProcessor, CLIPModel
+# model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+# model.save_pretrained("./pretrained_models/clip-vit-base")
+# processor = AutoProcessor.from_pretrained("openai/clip-vit-base-patch32")
+# processor.save_pretrained("./pretrained_models/clip-vit-base")
 
 # For Deberta model
 # from transformers import DebertaTokenizer, DebertaModel
@@ -36,3 +36,12 @@ processor.save_pretrained("./pretrained_models/clip-vit-base")
 # model = DebertaModel.from_pretrained("microsoft/deberta-base")
 # model.save_pretrained("./pretrained_models/deberta_base")
 # tokenizer.save_pretrained("./pretrained_models/deberta_base")
+
+# from transformers import AutoTokenizer, AutoModel
+# import torch
+# import torch.nn.functional as F
+# # Load model from HuggingFace Hub
+# tokenizer = AutoTokenizer.from_pretrained('sentence-transformers/multi-qa-mpnet-base-dot-v1')
+# model = AutoModel.from_pretrained('sentence-transformers/multi-qa-mpnet-base-dot-v1')
+# model.save_pretrained("./pretrained_models/multi-qa-mpnet-base-dot-v1")
+# tokenizer.save_pretrained("./pretrained_models/multi-qa-mpnet-base-dot-v1")

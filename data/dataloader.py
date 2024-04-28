@@ -167,6 +167,10 @@ class MMDataset(Dataset):
 
         if 'roberta' in self.args.text_encoder:
             return img_inputs, text_tokens['input_ids'], 0, text_tokens['attention_mask'], label
+        
+        elif 'all-mpnet-base-v2' in self.args.text_encoder:
+            return img_inputs, text_tokens['input_ids'], 0, text_tokens['attention_mask'], label
+
         else:
             return img_inputs, text_tokens['input_ids'], text_tokens['token_type_ids'], text_tokens[
                 'attention_mask'], label
