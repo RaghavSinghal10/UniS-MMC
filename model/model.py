@@ -8,7 +8,7 @@ from model.ImageEncoder import *
 
 __all__ = ['MMC']
 
-def mixup_data(input_image, text_embedding, y, alpha=1.0, mixup_image=True, mixup_text=False, use_cuda=True):
+def mixup_data(input_image, text_embedding, y, alpha=0.2, mixup_image=True, mixup_text=False, use_cuda=True):
     '''Returns mixed inputs, pairs of targets, and lambda'''
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
@@ -90,17 +90,17 @@ class MMC(nn.Module):
                 mixed_input_image, mixed_text_embedding, y_a, y_b, lam = image, text, label, label, 1
             
             elif self.args.image_mixup and not self.args.text_mixup:
-                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
+                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, alpha=self.args.alpha, mixup_image=self.args.image_mixup,
                                                                                 mixup_text=self.args.text_mixup, use_cuda=True)
                 mixed_text_embedding = text
 
             elif not self.args.image_mixup and self.args.text_mixup:
-                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
+                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, alpha=self.args.alpha, mixup_image=self.args.image_mixup,
                                                                                 mixup_text=self.args.text_mixup, use_cuda=True)
                 mixed_input_image = image
 
             else:
-                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
+                mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, alpha=self.args.alpha, mixup_image=self.args.image_mixup,
                                                                                 mixup_text=self.args.text_mixup, use_cuda=True)
 
             if not self.args.image_embedding_mixup:

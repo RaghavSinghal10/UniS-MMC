@@ -93,6 +93,7 @@ parser.add_argument('--cross_attention', action='store_true', help='cross attent
 parser.add_argument('--text_mixup', action='store_true', help='text mixup or not')
 parser.add_argument('--image_mixup', action='store_true', help='img mixup or not')
 parser.add_argument('--image_embedding_mixup', action='store_true', help='image embedding mixup or not')
+parser.add_argument('--alpha', type=float, default=0.2, help='alpha for mixup')
 
 # parser.add_argument('--seeds', nargs='+', type=int,
 #                     help='set seeds for multiple runs!')
@@ -214,6 +215,7 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
     total_step = 0
     gradient_accumulation_steps = int(args.batch_gradient / args.batch_size)
     for epoch in range(args.num_epoch + 1):
+        print("Epoch: ", epoch+1)
         train_loader, valid_loader, test_loader = data
         y_pred = []
         y_true = []
