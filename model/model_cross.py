@@ -56,9 +56,6 @@ class MMC_Cross(nn.Module):
         image = torch.squeeze(image, 1)
         image = self.image_encoder(pixel_values=image)
 
-        # print("text shape: ", text.shape)
-        # print("image shape: ", image.shape)
-
         q_text = self.wq_text(text)
         k_text = self.wk_text(text)
         v_text = self.wv_text(text)
@@ -67,46 +64,34 @@ class MMC_Cross(nn.Module):
         k_image = self.wk_image(image)
         v_image = self.wv_image(image)
 
-        # print("q_text shape: ", q_text.shape)
-        # print("k_text shape: ", k_text.shape)
-        # print("v_text shape: ", v_text.shape)
-
-        # print("q_image shape: ", q_image.shape)
-        # print("k_image shape: ", k_image.shape)
-        # print("v_image shape: ", v_image.shape)
-
         # Cross Attention
         attn_text = torch.matmul(q_text, k_image.transpose(1, 2))
         attn_text = F.softmax(attn_text / np.sqrt(k_image.size()[-1]), dim=-1)
-        # print("attn_text shape: ", attn_text.shape)
         text_attended = torch.matmul(attn_text, v_image)
-        # print("text_attended shape: ", text_attended.shape)
 
         attn_image = torch.matmul(q_image, k_text.transpose(1, 2))
         attn_image = F.softmax(attn_image / np.sqrt(k_image.size()[-1]), dim=-1)
         attn_image = F.softmax(attn_image, dim=-1)
-        # print("attn_image shape: ", attn_image.shape)
         image_attended = torch.matmul(attn_image, v_text)
-        # print("image_attended shape: ", image_attended.shape)
 
         output_text = self.text_classfier(text_attended[:, 0, :])
         output_image = self.image_classfier(image_attended[:, 0, :])
 
-        # print("output_text shape: ", output_text.shape)
-        # print("output_image shape: ", output_image.shape)
-
         fusion = torch.cat([text_attended[:, 0, :], image_attended[:, 0, :]], dim=-1)
-        # fusion = torch.cat([text[:, 0, :], image[:, 0, :]], dim=-1)
         output_mm = self.mm_classfier(fusion)
-
-        # print("output_mm shape: ", output_mm.shape)
-        # print("fusion shape: ", fusion.shape)
 
         if infer:
             return output_mm
 
         MMLoss_m = torch.mean(criterion(output_mm, label))
 
+        MMLoss_text = torch.mean(criterion(output_text, label))
+        MMLoss_image = torch.mean(criterion(output_image, label))
+
+        MMLoss_sum = MMLoss_text + MMLoss_image + MMLoss_m 
+
+        return MMLoss_sum, MMLoss_m, output_mm
+    
         # if self.args.mmc in ['NoMMC']:
         #     MMLoss_sum = MMLoss_m
         #     return MMLoss_sum, MMLoss_m, output_mm
@@ -121,13 +106,8 @@ class MMC_Cross(nn.Module):
         #     MMLoss_sum = MMLoss_m + 0.1 * mmcLoss
         #     return MMLoss_sum, MMLoss_m, output_mm
 
-        MMLoss_text = torch.mean(criterion(output_text, label))
-        MMLoss_image = torch.mean(criterion(output_image, label))
         # mmcLoss = self.mmc_2(text_attended[:, 0, :], image_attended[:, 0, :], output_text, output_image, label)
         # MMLoss_sum = MMLoss_text + MMLoss_image + MMLoss_m + 0.1 * mmcLoss
-        MMLoss_sum = MMLoss_text + MMLoss_image + MMLoss_m 
-
-        return MMLoss_sum, MMLoss_m, output_mm
     
 
     def infer(self, text=None, image=None, data_list=None):

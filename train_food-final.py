@@ -24,7 +24,6 @@ __all__ = ['TrainModule']
 
 torch.cuda.current_device()
 
-
 os.environ['TORCH_USE_CUDA_DSA'] = '1'
 
 wandb.init(project='MMC')
@@ -88,7 +87,12 @@ parser.add_argument('--local_rank', default=-1, type=int, help='node rank for di
 parser.add_argument('--seeds', nargs='+', type=int, help='set seeds for multiple runs!')
 parser.add_argument('--model_path', type=str, default='./Path/To/results/models', help='path to load model parameters')
 parser.add_argument('--save_model', type=bool, default=True, help='save model or not')
+
 parser.add_argument('--cross_attention', action='store_true', help='cross attention or not')
+parser.add_argument('--text_mixup', action='store_true', help='text mixup or not')
+parser.add_argument('--image_mixup', action='store_true', help='img mixup or not')
+parser.add_argument('--image_embedding_mixup', action='store_true', help='image embedding mixup or not')
+
 # parser.add_argument('--seeds', nargs='+', type=int,
 #                     help='set seeds for multiple runs!')
 

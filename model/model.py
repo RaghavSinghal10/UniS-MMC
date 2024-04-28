@@ -73,7 +73,7 @@ class MMC(nn.Module):
             self.text_classfier = Classifier(args.text_dropout, args.text_out, args.post_dim, args.output_dim)
         self.mm_classfier = Classifier(args.mm_dropout, args.text_out + args.img_out, args.post_dim, args.output_dim)
 
-    def forward(self, text=None, image=None, data_list=None, label=None, infer=False, image_mixup=True, text_mixup=False):
+    def forward(self, text=None, image=None, data_list=None, label=None, infer=False):
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
         # feature_um = dict()
         # output_um = dict()
@@ -82,25 +82,29 @@ class MMC(nn.Module):
         text = self.text_encoder(text=text)
         image = torch.squeeze(image, 1)
 
-        if not image_mixup and not text_mixup:
+        if self.args.image_embedding_mixup:
+            image = self.image_encoder(pixel_values=image)
+
+        if not self.args.image_mixup and not self.args.text_mixup:
             mixed_input_image, mixed_text_embedding, y_a, y_b, lam = image, text, label, label, 1
         
-        elif image_mixup and not text_mixup:
-            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=image_mixup,
-                                                                             mixup_text=text_mixup, use_cuda=True)
+        elif self.args.image_mixup and not self.args.text_mixup:
+            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
+                                                                             mixup_text=self.args.text_mixup, use_cuda=True)
             mixed_text_embedding = text
 
-        elif not image_mixup and text_mixup:
-            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=image_mixup,
-                                                                             mixup_text=text_mixup, use_cuda=True)
+        elif not self.args.image_mixup and self.args.text_mixup:
+            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
+                                                                             mixup_text=self.args.text_mixup, use_cuda=True)
             mixed_input_image = image
 
         else:
-            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=image_mixup,
-                                                                             mixup_text=text_mixup, use_cuda=True)
+            mixed_input_image, mixed_text_embedding, y_a, y_b, lam = mixup_data(image, text, label, mixup_image=self.args.image_mixup,
+                                                                             mixup_text=self.args.text_mixup, use_cuda=True)
 
-
-        image = self.image_encoder(pixel_values=mixed_input_image)
+        if not self.args.image_embedding_mixup:
+            image = self.image_encoder(pixel_values=mixed_input_image)
+        
         output_text = self.text_classfier(mixed_text_embedding[:, 0, :])
         output_image = self.image_classfier(image[:, 0, :])
 
@@ -110,17 +114,17 @@ class MMC(nn.Module):
         if infer:
             return output_mm
 
-        if not image_mixup and not text_mixup:    
+        if not self.args.image_mixup and not self.args.text_mixup:    
             MMLoss_m = torch.mean(criterion(output_mm, label))
             MMLoss_text = torch.mean(criterion(output_text, label))
             MMLoss_image = torch.mean(criterion(output_image, label))
 
-        elif image_mixup and not text_mixup:
+        elif self.args.image_mixup and not self.args.text_mixup:
             MMLoss_m = torch.mean(mixup_criterion(criterion, output_mm, y_a, y_b, lam, mixing=True))
             MMLoss_text = torch.mean(criterion(output_text, label))
             MMLoss_image = torch.mean(mixup_criterion(criterion, output_image, y_a, y_b, lam))
 
-        elif not image_mixup and text_mixup:
+        elif not self.args.image_mixup and self.args.text_mixup:
             MMLoss_m = torch.mean(mixup_criterion(criterion, output_mm, y_a, y_b, lam, mixing=True))
             MMLoss_text = torch.mean(mixup_criterion(criterion, output_text, y_a, y_b, lam))
             MMLoss_image = torch.mean(criterion(output_image, label))
