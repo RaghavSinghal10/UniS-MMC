@@ -6,7 +6,7 @@ Python=3.8, Pytorch=1.8.0, CUDA=11.1
 ```
 conda create -n unis111 python=3.8
 conda install pytorch==1.8.0 torchvision==0.9.0 torchaudio==0.8.0 cudatoolkit=11.1 -c pytorch -c conda-forge
-pip install -r requirements.txt
+pip instll -r requirements.txt
 ```
 
 ## Code Structure
