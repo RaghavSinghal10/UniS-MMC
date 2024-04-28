@@ -16,6 +16,7 @@ from data.dataloader import MMDataLoader
 from src.metrics import collect_metrics
 from src.functions import save_checkpoint, load_checkpoint, dict_to_str, count_parameters
 from src.config import Config
+import time
 
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
@@ -122,9 +123,7 @@ args.data_dir = os.path.join(args.data_dir, args.dataset)
 
 wandb.config.update(args)
 
-
-
-args.best_model_save_path = os.path.join(args.model_save_dir,  f'{args.dataset}-{args.cross_attention}-best.pth')
+args.best_model_save_path = os.path.join(args.model_save_dir, f'{args.dataset}-best-{time.strftime("%Y%m%d-%H%M%S")}.pth')
 
 print(args)
 # To decide the lr scheduler
