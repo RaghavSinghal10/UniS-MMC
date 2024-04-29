@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from model.TextEncoder import *
 from model.ImageEncoder import *
 
+from model.utils import *
+
 __all__ = ['MMC']
 
 def mixup_data(input_image, text_embedding, y, alpha, mixup_image=True, mixup_text=False, use_cuda=True):
@@ -73,11 +75,8 @@ class MMC(nn.Module):
             self.text_classfier = Classifier(args.text_dropout, args.text_out, args.post_dim, args.output_dim)
         self.mm_classfier = Classifier(args.mm_dropout, args.text_out + args.img_out, args.post_dim, args.output_dim)
 
-    def forward(self, text=None, image=None, data_list=None, label=None, infer=False):
+    def forward(self, text=None, image=None, data_list=None, label=None, infer=False, use_soft_clip=False):
         criterion = torch.nn.CrossEntropyLoss(reduction='none')
-        # feature_um = dict()
-        # output_um = dict()
-        # UMLoss = dict()
 
         if not infer:
             text = self.text_encoder(text=text)
@@ -141,8 +140,33 @@ class MMC(nn.Module):
             MMLoss_m = torch.mean(mixup_criterion(criterion, output_mm, y_a, y_b, lam))
             MMLoss_text = torch.mean(mixup_criterion(criterion, output_text, y_a, y_b, lam))
             MMLoss_image = torch.mean(mixup_criterion(criterion, output_image, y_a, y_b, lam))
-
+        
         MMLoss_sum = MMLoss_text + MMLoss_image + MMLoss_m
+
+        if self.args.multi_mixup:
+
+            if not use_soft_clip:
+                
+                # take a clone of text
+                text_new = text.clone()
+                image_new = image.clone()
+
+                text_mixup, perm_text, betas_text, select_text = mixco_text(text_new[:, 0, :], beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+                image_mixup, perm_image, betas_image, select_image = mixco_image(image_new[:, 0, :], beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+                
+                MMLoss_Contrastive_text = mixco_nce(text_mixup, image_new[:, 0, :], perm=perm_text, betas=betas_text)
+                MMLoss_Contrastive_image = mixco_nce(image_mixup, text_new[:, 0, :], perm=perm_image, betas=betas_image)
+
+                MMLoss_Contrastive = MMLoss_Contrastive_text + MMLoss_Contrastive_image
+                MMLoss_sum = MMLoss_sum + self.args.lambda_mixup* MMLoss_Contrastive
+
+            else:
+                MMLoss_Contrastive_text = soft_clip_loss(text[:, 0, :], image[:, 0, :])
+                MMLoss_Contrastive_image = soft_clip_loss(image[:, 0, :], text[:, 0, :])
+
+                MMLoss_Contrastive = MMLoss_Contrastive_text + MMLoss_Contrastive_image
+                MMLoss_sum = MMLoss_sum + self.args.lambda_mixup* MMLoss_Contrastive
+
 
         return MMLoss_sum, MMLoss_m, output_mm
 
@@ -166,8 +190,7 @@ class Classifier(nn.Module):
         output = self.post_layer_3(input_p2)
         return output
     
-
-        # if self.args.mmc in ['NoMMC']:
+      # if self.args.mmc in ['NoMMC']:
         #     MMLoss_sum = MMLoss_m
         #     return MMLoss_sum, MMLoss_m, output_mm
 
@@ -183,27 +206,6 @@ class Classifier(nn.Module):
 
         # mmcLoss = self.mmc_2(text[:, 0, :], image[:, 0, :], output_text, output_image, label)
         # MMLoss_sum = MMLoss_text + MMLoss_image + MMLoss_m + 0.1 * mmcLoss
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

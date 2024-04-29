@@ -10,6 +10,7 @@ from torch.nn.parallel import DataParallel
 from sklearn.metrics import accuracy_score
 import argparse
 import wandb
+from model.utils import *
 from model.model import MMC
 from model.model_cross import MMC_Cross
 from data.dataloader import MMDataLoader
@@ -33,7 +34,7 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--name', type=str, default='MMC',
                         help='project name')
-parser.add_argument('--dataset', type=str, default='Food101',
+parser.add_argument('--dataset', type=str, default='n24news',
                     help='support N24News/Food101')
 parser.add_argument('--text_type', type=str, default='headline',
                     help='support headline/caption/abstract')
@@ -90,10 +91,18 @@ parser.add_argument('--model_path', type=str, default='./Path/To/results/models'
 parser.add_argument('--save_model', type=bool, default=True, help='save model or not')
 
 parser.add_argument('--cross_attention', action='store_true', help='cross attention or not')
+
 parser.add_argument('--text_mixup', action='store_true', help='text mixup or not')
 parser.add_argument('--image_mixup', action='store_true', help='img mixup or not')
 parser.add_argument('--image_embedding_mixup', action='store_true', help='image embedding mixup or not')
 parser.add_argument('--alpha', type=float, default=0.2, help='alpha for mixup')
+
+parser.add_argument('--multi_mixup', action='store_true', help='multi mixco or not')
+parser.add_argument('--mixup_pct', type=float, default=0.33, help='mixup percentage')
+parser.add_argument('--lambda_mixup', type=float, default=0.1, help='lambda for mixup')
+parser.add_argument('--mixup_beta', type=float, default=0.15, help='beta for mixup')
+parser.add_argument('--mixup_s_thresh', type=float, default=0.5, help='s_thresh for mixup')
+
 
 # parser.add_argument('--seeds', nargs='+', type=int,
 #                     help='set seeds for multiple runs!')
@@ -227,7 +236,10 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
                 image = batch_image.to(args.device)
                 labels = batch_label.to(args.device).view(-1)
                 # optimizer.zero_grad()
-                loss, loss_m, logit_m = model(text, image, None, labels)
+                if epoch < int(args.mixup_pct * args.num_epoch):
+                    loss, loss_m, logit_m = model(text, image, None, labels, use_soft_clip=False)
+                else:
+                    loss, loss_m, logit_m = model(text, image, None, labels, use_soft_clip=True)
                 # print(loss)
                 loss = loss.sum() # / gradient_accumulation_steps
                 loss.backward()
@@ -245,13 +257,15 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
                 if (total_step % (args.valid_step * gradient_accumulation_steps) == 0) and (epoch > args.min_epoch):
                 # if total_step % args.valid_step == 0:
                     valid_results, best_valid, nBetter = valid(args, model, data, best_valid, nBetter, total_step)
+                    wandb.log({"validation results": valid_results})
                     if nBetter < 1:
-                        if args.local_rank in [-1, 0]:
-                            wandb.log({"validation results": valid_results})
+                        # if args.local_rank in [-1, 0]:
+                        #    wandb.log({"validation results": valid_results})
                             # logger.info(args.dataset + " Valid: " + dict_to_str(valid_results))
                         best_results = valid_results
                     if nBetter > args.patience:
-                        return best_results
+                        pass
+                        # return best_results
                     # print(args.dataset + " Valid: " + dict_to_str(valid_results))
                     # return best_results
             logits = torch.cat(y_pred)
