@@ -194,7 +194,7 @@ def valid(args, model, data=None, best_valid=None, nBetter=None, step=None):
         te_true = torch.cat(y_true).data.cpu().numpy()
         te_prob = F.softmax(logits, dim=1).data.cpu().numpy()
         cur_valid = accuracy_score(te_true, te_prob.argmax(1))
-        wandb.log("validation accuracy", cur_valid)
+        # wandb.log("validation accuracy", cur_valid)
         isBetter = cur_valid >= (best_valid + 1e-6)
         valid_results = {"step": step}
         valid_results.update(collect_metrics(args.dataset, te_true, te_prob))

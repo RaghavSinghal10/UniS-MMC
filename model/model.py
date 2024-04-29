@@ -8,7 +8,7 @@ from model.ImageEncoder import *
 
 __all__ = ['MMC']
 
-def mixup_data(input_image, text_embedding, y, alpha=0.2, mixup_image=True, mixup_text=False, use_cuda=True):
+def mixup_data(input_image, text_embedding, y, alpha, mixup_image=True, mixup_text=False, use_cuda=True):
     '''Returns mixed inputs, pairs of targets, and lambda'''
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
