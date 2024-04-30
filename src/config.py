@@ -81,7 +81,7 @@ class Config():
                     'min_epoch': 1,
                     'valid_step': 50,
 
-                    'text_type': 'abstract',
+                    # 'text_type': 'abstract',
 
                     'lr_text_tfm': 2e-5,
                     'lr_img_tfm': 5e-5,  

@@ -36,7 +36,7 @@ parser.add_argument('--name', type=str, default='MMC',
                         help='project name')
 parser.add_argument('--dataset', type=str, default='n24news',
                     help='support N24News/Food101')
-parser.add_argument('--text_type', type=str, default='headline',
+parser.add_argument('--text_type', type=str, default='abstract',
                     help='support headline/caption/abstract')
 parser.add_argument('--mmc', type=str, default='UniSMMC',
                     help='support UniSMMC/UnSupMMC/SupMMC')
@@ -274,12 +274,20 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
                     if args.local_rank in [-1, 0]:
                         wandb.log({"best results": best_results})
 
-
-
                     if nBetter < 1:
                         # if args.local_rank in [-1, 0]:
-                        #    wandb.log({"validation results": valid_results})
-                            # logger.info(args.dataset + " Valid: " + dict_to_str(valid_results))
+                        # wandb.log({"validation results": valid_results})
+                        # load_checkpoint(model, args.best_model_save_path)
+                        # te_prob, te_true = test_epoch(model, test_loader)
+                        # best_results = collect_metrics(args.dataset, te_true, te_prob)
+                        # # get acc from results
+                        # accuracy_test = best_results['acc']
+                        # accuracy_test_history.append(accuracy_test)
+                        # max_accuracy = max(accuracy_test_history)
+                        # wandb.log({"test_acc": accuracy_test, "max_test_acc": max_accuracy})
+                        # if args.local_rank in [-1, 0]:
+                        #     wandb.log({"best results": best_results})
+                        #     # logger.info(args.dataset + " Valid: " + dict_to_str(valid_results))
                         best_results = valid_results
                     if nBetter > args.patience:
                         pass
