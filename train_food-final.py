@@ -217,11 +217,13 @@ def valid(args, model, data=None, best_valid=None, nBetter=None, step=None):
         return valid_results, best_valid, nBetter
 
 def train_valid(args, model, optimizer, scheduler=None, data=None):
+
     model.train()
     best_valid = 1e-5
     nBetter = 0
     train_loss_m = 0
     total_step = 0
+    accuracy_test_history = []
     gradient_accumulation_steps = int(args.batch_gradient / args.batch_size)
     for epoch in range(args.num_epoch + 1):
         print("Epoch: ", epoch+1)
@@ -244,8 +246,9 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
                 loss = loss.sum() # / gradient_accumulation_steps
                 loss.backward()
                 # optimizer.step()
-                train_loss_m += loss_m.sum().item()
-                wandb.log({"training loss": loss})
+                # train_loss_m += loss_m.sum().item()
+                wandb.log({"final ce loss": loss_m.sum().detach().cpu().item()})
+                wandb.log({"training loss": loss.detach().cpu().item()})
                 y_pred.append(logit_m.cpu())
                 y_true.append(batch_label.cpu())
                 total_step += 1
@@ -258,6 +261,21 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
                 # if total_step % args.valid_step == 0:
                     valid_results, best_valid, nBetter = valid(args, model, data, best_valid, nBetter, total_step)
                     wandb.log({"validation results": valid_results})
+
+
+                    load_checkpoint(model, args.best_model_save_path)
+                    te_prob, te_true = test_epoch(model, test_loader)
+                    best_results = collect_metrics(args.dataset, te_true, te_prob)
+                    # get acc from results
+                    accuracy_test = best_results['acc']
+                    accuracy_test_history.append(accuracy_test)
+                    max_accuracy = max(accuracy_test_history)
+                    wandb.log({"test_acc": accuracy_test, "max_test_acc": max_accuracy})
+                    if args.local_rank in [-1, 0]:
+                        wandb.log({"best results": best_results})
+
+
+
                     if nBetter < 1:
                         # if args.local_rank in [-1, 0]:
                         #    wandb.log({"validation results": valid_results})
@@ -273,7 +291,7 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
             tr_prob = F.softmax(logits, dim=1).data.cpu().numpy()
             tuning_metric = accuracy_score(tr_true, tr_prob.argmax(1))
             scheduler.step(tuning_metric)
-    return best_results
+    return valid_results
 
 def test_epoch(model, dataloader=None):
     model.eval()
@@ -317,10 +335,7 @@ def main():
             model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
                                                         output_device=args.local_rank,
                                                         find_unused_parameters=True)
-
-    accuracy_test_history = []
-
-    train_loader, valid_loader, test_loader = MMDataLoader(args)
+            
     data = train_loader, valid_loader, test_loader
 
     if args.local_rank in [-1, 0]:
@@ -337,6 +352,7 @@ def main():
     te_prob, te_true = test_epoch(model, test_loader)
     best_results = collect_metrics(args.dataset, te_true, te_prob)
     # get acc from results
+    accuracy_test_history = []
     accuracy_test = best_results['acc']
     accuracy_test_history.append(accuracy_test)
     max_accuracy = max(accuracy_test_history)
