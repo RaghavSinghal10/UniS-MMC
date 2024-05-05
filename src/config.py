@@ -39,7 +39,7 @@ class Config():
                     'batch_gradient': 128, #60,
                     'max_length': 512,
                     'num_workers': 24,
-                    'num_epoch': 35,
+                    'num_epoch': 25,
                     'patience': 3,
                     'min_epoch': 2,
                     'valid_step': 50, #100,
@@ -64,7 +64,7 @@ class Config():
                     'img_dropout': 0.1,
                     'mm_dropout': 0.0,
 
-                    'text_encoder': 'bert_base',
+                    #'text_encoder': 'bert_base',
                     'image_encoder': 'vit_base',
                 },
                 'n24news': {
@@ -103,7 +103,7 @@ class Config():
                     'img_dropout': 0.0,
                     'mm_dropout': 0.0,
 
-                    'text_encoder': 'roberta_base',
+                    # 'text_encoder': 'roberta_base',
                     'image_encoder': 'vit_base',
                 },
                 'rosmap': {

@@ -356,17 +356,17 @@ def main():
             print("Start training...")
         best_results = train_valid(args, model, optimizer, scheduler, data)
 
-    load_checkpoint(model, args.best_model_save_path)
-    te_prob, te_true = test_epoch(model, test_loader)
-    best_results = collect_metrics(args.dataset, te_true, te_prob)
-    # get acc from results
-    accuracy_test_history = []
-    accuracy_test = best_results['acc']
-    accuracy_test_history.append(accuracy_test)
-    max_accuracy = max(accuracy_test_history)
-    wandb.log({"test_acc": accuracy_test, "max_test_acc": max_accuracy})
-    if args.local_rank in [-1, 0]:
-        wandb.log({"best results": best_results})
+    # load_checkpoint(model, args.best_model_save_path)
+    # te_prob, te_true = test_epoch(model, test_loader)
+    # best_results = collect_metrics(args.dataset, te_true, te_prob)
+    # # get acc from results
+    # accuracy_test_history = []
+    # accuracy_test = best_results['acc']
+    # accuracy_test_history.append(accuracy_test)
+    # max_accuracy = max(accuracy_test_history)
+    # wandb.log({"test_acc": accuracy_test, "max_test_acc": max_accuracy})
+    # if args.local_rank in [-1, 0]:
+    #     wandb.log({"best results": best_results})
 
 
 if __name__ == '__main__':
