@@ -37,7 +37,8 @@ class Config():
                     # training/validation/test parameters
                     'batch_size': 32,
                     'batch_gradient': 128, #60,
-                    'max_length': 512,
+                    # 'max_length': 512,
+                    'max_length': 64,
                     'num_workers': 24,
                     'num_epoch': 25,
                     'patience': 3,
@@ -45,7 +46,7 @@ class Config():
                     'valid_step': 50, #100,
 
                     'lr_text_tfm': 5e-5, #2e-5,
-                    'lr_img_tfm': 5e-5,#
+                    'lr_img_tfm': 5e-5, #
                     'lr_text_cls': 1e-4, # 5e-5,
                     'lr_img_cls': 1e-4,
                     'lr_mm_cls': 1e-4,
@@ -60,8 +61,8 @@ class Config():
                     'post_dim': 256,
                     'output_dim': 101,
 
-                    'text_dropout': 0.1,
-                    'img_dropout': 0.1,
+                    'text_dropout': 0.0,
+                    'img_dropout': 0.0,
                     'mm_dropout': 0.0,
 
                     #'text_encoder': 'bert_base',
