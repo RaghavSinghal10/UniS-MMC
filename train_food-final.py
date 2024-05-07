@@ -137,10 +137,15 @@ args.best_model_save_path = os.path.join(args.model_save_dir, f'{args.dataset}-b
 
 print(args)
 # To decide the lr scheduler
+# def get_scheduler(optimizer, args):
+#     return optim.lr_scheduler.ReduceLROnPlateau(
+#         optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
+#     )
+
 def get_scheduler(optimizer, args):
-    return optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
-    )
+    # return optim.lr_scheduler.ReduceLROnPlateau(
+    #     optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
+    return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epoch)
 
 # To decide the optimizer
 def get_optimizer(model, args):

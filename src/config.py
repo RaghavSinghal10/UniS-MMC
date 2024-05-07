@@ -38,7 +38,7 @@ class Config():
                     'batch_size': 32,
                     'batch_gradient': 128, #60,
                     # 'max_length': 512,
-                    'max_length': 64,
+                    'max_length': 512,
                     'num_workers': 24,
                     'num_epoch': 25,
                     'patience': 3,
