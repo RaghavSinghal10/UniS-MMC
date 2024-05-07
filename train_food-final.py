@@ -309,7 +309,12 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
             logits = torch.cat(y_pred)
             tr_true = torch.cat(y_true).data.cpu().numpy()
             tr_prob = F.softmax(logits, dim=1).data.cpu().numpy()
-            tuning_metric = accuracy_score(tr_true, tr_prob.argmax(1))
+
+            if args.dataset == 'mmimdb':
+                tuning_metric = f1_score(tr_true, tr_prob, average='micro')
+            else:
+                tuning_metric = accuracy_score(tr_true, tr_prob.argmax(1))
+                
             scheduler.step(tuning_metric)
     return valid_results
 
