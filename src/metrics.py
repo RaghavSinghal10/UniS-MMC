@@ -55,6 +55,16 @@ def collect_metrics(dataset, y_true, y_pred):
             "uf1": round(uf1, 4)
         }
 
+
+    elif dataset == 'mmimdb':
+        macro_f1 = f1_score(y_true, y_pred, average='macro')
+        micro_f1 = f1_score(y_true, y_pred, average='micro')
+
+        eval_results = {
+            "macro_f1": round(macro_f1, 4),
+            "micro_f1": round(micro_f1, 4)
+        }
+
     elif dataset == 'HatefulMemes':
         acc = accuracy_score(y_true, y_pred.argmax(1))
         wf1 = f1_score(y_true, y_pred.argmax(1), average='weighted')

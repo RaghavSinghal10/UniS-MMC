@@ -76,7 +76,11 @@ class MMC(nn.Module):
         self.mm_classfier = Classifier(args.mm_dropout, args.text_out + args.img_out, args.post_dim, args.output_dim)
 
     def forward(self, text=None, image=None, data_list=None, label=None, infer=False, use_soft_clip=False):
-        criterion = torch.nn.CrossEntropyLoss(reduction='none')
+
+        if self.args.dataset == 'mmimdb':
+            criterion = torch.nn.BCEWithLogitsLoss()
+        else:
+            criterion = torch.nn.CrossEntropyLoss(reduction='none')
 
         if not infer:
             text = self.text_encoder(text=text)

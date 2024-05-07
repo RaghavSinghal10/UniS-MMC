@@ -7,7 +7,7 @@ from torch import optim
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parallel import DataParallel
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score, accuracy_score
 import argparse
 import wandb
 from model.utils import *
@@ -103,6 +103,8 @@ parser.add_argument('--lambda_mixup', type=float, default=0.1, help='lambda for 
 parser.add_argument('--mixup_beta', type=float, default=0.15, help='beta for mixup')
 parser.add_argument('--mixup_s_thresh', type=float, default=0.5, help='s_thresh for mixup')
 
+parser.add_argument('--lr_scheduler', type=str, default='ReduceLROnPlateau', help='scheduler')
+
 
 # parser.add_argument('--seeds', nargs='+', type=int,
 #                     help='set seeds for multiple runs!')
@@ -136,18 +138,16 @@ wandb.config.update(args)
 args.best_model_save_path = os.path.join(args.model_save_dir, f'{args.dataset}-best-{time.strftime("%Y%m%d-%H%M%S")}.pth')
 
 print(args)
-# To decide the lr scheduler
-# def get_scheduler(optimizer, args):
-#     return optim.lr_scheduler.ReduceLROnPlateau(
-#         optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
-#     )
+
 
 def get_scheduler(optimizer, args):
-    # return optim.lr_scheduler.ReduceLROnPlateau(
-    #     optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
-    return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epoch)
+    if args.lr_scheduler == "ReduceLROnPlateau":
+        return optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, "max", patience=args.lr_patience, verbose=True, factor=args.lr_factor
+        )
+    elif args.lr_scheduler == "cosine":
+        return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epoch)
 
-# To decide the optimizer
 def get_optimizer(model, args):
     if args.mmc not in ['V']: #Goes in both if conditions with train_food.py
 
@@ -206,9 +206,15 @@ def valid(args, model, data=None, best_valid=None, nBetter=None, step=None):
                 # break
         logits = torch.cat(y_pred)
         te_true = torch.cat(y_true).data.cpu().numpy()
-        te_prob = F.softmax(logits, dim=1).data.cpu().numpy()
-        cur_valid = accuracy_score(te_true, te_prob.argmax(1))
-        # wandb.log("validation accuracy", cur_valid)
+
+        if args.dataset == 'mmimdb':
+            te_prob = F.sigmoid(logits).data.cpu().numpy() > 0.5
+            macro_f1 = f1_score(te_true, te_prob, average='macro')
+            micro_f1 = f1_score(te_true, te_prob, average='micro')
+            cur_valid = micro_f1
+        else:
+            te_prob = F.softmax(logits, dim=1).data.cpu().numpy()
+            cur_valid = accuracy_score(te_true, te_prob.argmax(1))
         isBetter = cur_valid >= (best_valid + 1e-6)
         valid_results = {"step": step}
         valid_results.update(collect_metrics(args.dataset, te_true, te_prob))
@@ -229,6 +235,8 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
     train_loss_m = 0
     total_step = 0
     accuracy_test_history = []
+    macro_f1_history = []
+    micro_f1_history = []
     gradient_accumulation_steps = int(args.batch_gradient / args.batch_size)
     for epoch in range(args.num_epoch + 1):
         print("Epoch: ", epoch+1)
@@ -247,7 +255,6 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
                     loss, loss_m, logit_m = model(text, image, None, labels, use_soft_clip=False)
                 else:
                     loss, loss_m, logit_m = model(text, image, None, labels, use_soft_clip=True)
-                # print(loss)
                 loss = loss.sum() # / gradient_accumulation_steps
                 loss.backward()
                 # optimizer.step()
@@ -272,33 +279,33 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
                     te_prob, te_true = test_epoch(model, test_loader)
                     best_results = collect_metrics(args.dataset, te_true, te_prob)
                     # get acc from results
-                    accuracy_test = best_results['acc']
-                    accuracy_test_history.append(accuracy_test)
-                    max_accuracy = max(accuracy_test_history)
-                    wandb.log({"test_acc": accuracy_test, "max_test_acc": max_accuracy})
+                    if args.dataset == 'mmimdb':
+                        macro_f1 = best_results['macro_f1']
+                        micro_f1 = best_results['micro_f1']
+
+                        macro_f1_history.append(macro_f1)
+                        micro_f1_history.append(micro_f1)
+
+                        max_macro_f1 = max(macro_f1_history)
+                        max_micro_f1 = max(micro_f1_history)
+
+                        wandb.log({"test_macro_f1": macro_f1, "test_micro_f1": micro_f1})
+                        wandb.log({"max_test_macro_f1": max_macro_f1, "max_test_micro_f1": max_micro_f1})
+
+                    else:
+                        accuracy_test = best_results['acc']
+                        accuracy_test_history.append(accuracy_test)
+                        max_accuracy = max(accuracy_test_history)
+                        wandb.log({"test_acc": accuracy_test, "max_test_acc": max_accuracy})
+
                     if args.local_rank in [-1, 0]:
                         wandb.log({"best results": best_results})
 
                     if nBetter < 1:
-                        # if args.local_rank in [-1, 0]:
-                        # wandb.log({"validation results": valid_results})
-                        # load_checkpoint(model, args.best_model_save_path)
-                        # te_prob, te_true = test_epoch(model, test_loader)
-                        # best_results = collect_metrics(args.dataset, te_true, te_prob)
-                        # # get acc from results
-                        # accuracy_test = best_results['acc']
-                        # accuracy_test_history.append(accuracy_test)
-                        # max_accuracy = max(accuracy_test_history)
-                        # wandb.log({"test_acc": accuracy_test, "max_test_acc": max_accuracy})
-                        # if args.local_rank in [-1, 0]:
-                        #     wandb.log({"best results": best_results})
-                        #     # logger.info(args.dataset + " Valid: " + dict_to_str(valid_results))
                         best_results = valid_results
                     if nBetter > args.patience:
                         pass
-                        # return best_results
-                    # print(args.dataset + " Valid: " + dict_to_str(valid_results))
-                    # return best_results
+
             logits = torch.cat(y_pred)
             tr_true = torch.cat(y_true).data.cpu().numpy()
             tr_prob = F.softmax(logits, dim=1).data.cpu().numpy()
@@ -320,7 +327,11 @@ def test_epoch(model, dataloader=None):
                 y_true.append(batch_label.cpu())
         logits = torch.cat(y_pred)
         true = torch.cat(y_true).data.cpu().numpy()
-        prob = F.softmax(logits, dim=1).data.cpu().numpy()
+
+        if args.dataset == 'mmimdb':
+            prob = F.sigmoid(logits).data.cpu().numpy() > 0.5
+        else:
+            prob = F.softmax(logits, dim=1).data.cpu().numpy()
     return prob, true
 
 def main():
@@ -363,5 +374,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
