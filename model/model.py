@@ -158,15 +158,33 @@ class MMC(nn.Module):
                 text_mixup, perm_text, betas_text, select_text = mixco_text(text_new[:, 0, :], beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
                 image_mixup, perm_image, betas_image, select_image = mixco_image(image_new[:, 0, :], beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
                 
-                MMLoss_Contrastive_text = mixco_nce(text_mixup, image_new[:, 0, :], perm=perm_text, betas=betas_text)
-                MMLoss_Contrastive_image = mixco_nce(image_mixup, text_new[:, 0, :], perm=perm_image, betas=betas_image)
+                if self.args.mix_only_images:
+                    MMLoss_Contrastive_text = 0
+                    MMLoss_Contrastive_image = mixco_nce(image_mixup, text_new[:, 0, :], perm=perm_image, betas=betas_image)
+
+                if self.args.mix_only_text:
+                    MMLoss_Contrastive_text = mixco_nce(text_mixup, image_new[:, 0, :], perm=perm_text, betas=betas_text)
+                    MMLoss_Contrastive_image = 0
+
+                if not self.args.mix_only_images and not self.args.mix_only_text:        
+                    MMLoss_Contrastive_text = mixco_nce(text_mixup, image_new[:, 0, :], perm=perm_text, betas=betas_text)
+                    MMLoss_Contrastive_image = mixco_nce(image_mixup, text_new[:, 0, :], perm=perm_image, betas=betas_image)
 
                 MMLoss_Contrastive = MMLoss_Contrastive_text + MMLoss_Contrastive_image
                 MMLoss_sum = MMLoss_sum + self.args.lambda_mixup* MMLoss_Contrastive
 
             else:
-                MMLoss_Contrastive_text = soft_clip_loss(text[:, 0, :], image[:, 0, :])
-                MMLoss_Contrastive_image = soft_clip_loss(image[:, 0, :], text[:, 0, :])
+                if self.args.mix_only_images:
+                    MMLoss_Contrastive_text = 0
+                    MMLoss_Contrastive_image = soft_clip_loss(image[:, 0, :], text[:, 0, :])
+                
+                if self.args.mix_only_text:
+                    MMLoss_Contrastive_text = soft_clip_loss(text[:, 0, :], image[:, 0, :])
+                    MMLoss_Contrastive_image = 0
+
+                if not self.args.mix_only_images and not self.args.mix_only_text:
+                    MMLoss_Contrastive_text = soft_clip_loss(text[:, 0, :], image[:, 0, :])
+                    MMLoss_Contrastive_image = soft_clip_loss(image[:, 0, :], text[:, 0, :])
 
                 MMLoss_Contrastive = MMLoss_Contrastive_text + MMLoss_Contrastive_image
                 MMLoss_sum = MMLoss_sum + self.args.lambda_mixup* MMLoss_Contrastive
