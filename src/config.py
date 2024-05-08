@@ -35,11 +35,7 @@ class Config():
                     'num_train_data':67972,
                     'early_stop': 4,
                     # training/validation/test parameters
-<<<<<<< HEAD
-                    # 'batch_size': 32,
-=======
                     'batch_size': 128,
->>>>>>> d363680237c472b89a4191a7e0b14dfc0cd1533e
                     'batch_gradient': 128, #60,
                     # 'max_length': 512,
                     'max_length': 512,
