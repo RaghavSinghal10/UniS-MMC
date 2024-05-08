@@ -31,6 +31,7 @@ def soft_clip_loss(preds, targs, temp=0.125):
     loss = (loss1 + loss2)/2
     return loss
 
+
 def mixco_image(images, beta=0.15, s_thresh=0.5):
 
     perm = torch.randperm(images.shape[0]).to(images.device)
@@ -57,8 +58,6 @@ def mixco_text(text, beta=0.15, s_thresh=0.5):
     
     return text, perm, betas, select
 
-# mix_modality is combination of modality A [BS, emb_size]
-# fix_modality is modality B [BS, emb_size]
 def mixco_nce(mix_modality, fix_modality, temp=0.1, perm=None, betas=None, bidirectional=True):
 
     mix_modality = F.normalize(mix_modality, dim=-1)
@@ -73,5 +72,32 @@ def mixco_nce(mix_modality, fix_modality, temp=0.1, perm=None, betas=None, bidir
     if bidirectional:
         loss2 = -(cos_sim.T.log_softmax(-1) * probs.T).sum(-1).mean()
         loss = (loss + loss2)/2
+
+    return loss
+
+
+def cross_entropy(preds, targets, reduction='none'):
+    log_softmax = nn.LogSoftmax(dim=-1)
+    loss = (-targets * log_softmax(preds)).sum(1)
+    if reduction == "none":
+        return loss
+    elif reduction == "mean":
+        return loss.mean()
+
+def nce(image_embeddings, text_embeddings, temperature=0.1):
+
+    # image_embeddings = F.normalize(image_embeddings, dim=-1)
+    # text_embeddings = F.normalize(text_embeddings, dim=-1)
+
+    # Calculating the Loss
+    logits = (text_embeddings @ image_embeddings.T) / temperature
+    images_similarity = image_embeddings @ image_embeddings.T
+    texts_similarity = text_embeddings @ text_embeddings.T
+    targets = F.softmax(
+        (images_similarity + texts_similarity) / 2 * temperature, dim=-1
+    )
+    texts_loss = cross_entropy(logits, targets, reduction='none')
+    images_loss = cross_entropy(logits.T, targets.T, reduction='none')
+    loss =  (images_loss + texts_loss) / 2.0
 
     return loss
