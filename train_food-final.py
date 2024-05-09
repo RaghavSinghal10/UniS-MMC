@@ -249,7 +249,10 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
             for batch_image, text_input_ids, text_token_type_ids, text_attention_mask, batch_label in td:
                 text = text_input_ids.to(args.device), text_token_type_ids.to(args.device), text_attention_mask.to(args.device)
                 image = batch_image.to(args.device)
-                labels = batch_label.to(args.device).view(-1)
+                if not args.dataset == 'mmimdb':
+                    labels = batch_label.to(args.device).view(-1)
+                else:
+                    labels = batch_label.to(args.device)
                 # optimizer.zero_grad()
                 if epoch < int(args.mixup_pct * args.num_epoch):
                     loss, loss_m, logit_m = model(text, image, None, labels, use_soft_clip=False)
@@ -308,14 +311,16 @@ def train_valid(args, model, optimizer, scheduler=None, data=None):
 
             logits = torch.cat(y_pred)
             tr_true = torch.cat(y_true).data.cpu().numpy()
-            tr_prob = F.softmax(logits, dim=1).data.cpu().numpy()
 
             if args.dataset == 'mmimdb':
+                tr_prob = F.sigmoid(logits).data.cpu().numpy() > 0.5
                 tuning_metric = f1_score(tr_true, tr_prob, average='micro')
             else:
+                tr_prob = F.softmax(logits, dim=1).data.cpu().numpy()
                 tuning_metric = accuracy_score(tr_true, tr_prob.argmax(1))
                 
             scheduler.step(tuning_metric)
+
     return valid_results
 
 def test_epoch(model, dataloader=None):

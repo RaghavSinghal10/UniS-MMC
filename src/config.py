@@ -68,7 +68,7 @@ class Config():
                     #'text_encoder': 'bert_base',
                     'image_encoder': 'vit_base',
                 },
-                'MM-IMDB': {
+                'mmimdb': {
                     'num_train_data': 67972,
                     'early_stop': 4,
                     # training/validation/test parameters
@@ -95,7 +95,7 @@ class Config():
                     'text_out': 768,
                     'img_out': 768,
                     'post_dim': 256,
-                    'output_dim': 24,
+                    'output_dim': 23,
 
                     'text_dropout': 0.0,  # From 0.1 -> 0
                     'img_dropout': 0.0,

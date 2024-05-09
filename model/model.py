@@ -78,7 +78,14 @@ class MMC(nn.Module):
     def forward(self, text=None, image=None, data_list=None, label=None, infer=False, use_soft_clip=False):
 
         if self.args.dataset == 'mmimdb':
-            criterion = torch.nn.BCEWithLogitsLoss()
+            freqs = [2154, 1609, 586, 772, 5105, 2287, 1194, 8414, 975, 1162, 202, 663, 1603, 632, 503, 1231, 3226, 1212, 281, 379, 3110, 804, 423]
+            if label is not None:
+                label = label.float()
+
+            label_weights = (torch.FloatTensor(freqs) / 15510) ** -1
+
+            criterion = torch.nn.BCEWithLogitsLoss(pos_weight=label_weights.to(self.args.device))
+
         else:
             criterion = torch.nn.CrossEntropyLoss(reduction='none')
 
@@ -114,6 +121,7 @@ class MMC(nn.Module):
 
             fusion = torch.cat([text[:, 0, :], image[:, 0, :]], dim=-1)
             output_mm = self.mm_classfier(fusion)
+
 
         if infer:
             text = self.text_encoder(text=text)

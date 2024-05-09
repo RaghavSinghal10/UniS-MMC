@@ -206,7 +206,8 @@ class MMDataset(Dataset):
             categories = [label_mmimdb[genres] for genres in self.df[index]['label']]
             for category in categories:
                 label[category] = 1 
-            
+            label = torch.tensor(label)
+
 
         # text -> text_token
         text_tokens = self.text_tokenizer(text, max_length=self.max_length, add_special_tokens=True, truncation=True,
