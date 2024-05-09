@@ -77,7 +77,7 @@ class Config():
                     'max_length': 512,
                     # 'gradient_accumulation_steps': 1,
                     'num_workers': 14,
-                    'num_epoch': 25,
+                    'num_epoch': 80,
                     'patience': 8,
                     'min_epoch': 1,
                     'valid_step': 50,
