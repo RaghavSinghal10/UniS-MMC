@@ -200,7 +200,13 @@ class MMDataset(Dataset):
         else:
             text = self.df[index]['text']
             img_path = self.args.data_dir + '/mmimdb/dataset/' + self.df[index]['id'] + '.jpeg'
-            label = [label_mmimdb[genres] for genres in self.df[index]['label']]
+            #label = [label_mmimdb[genres] for genres in self.df[index]['label']]
+            num_labels = len(label_mmimdb.keys())
+            label = [0]*num_labels 
+            categories = [label_mmimdb[genres] for genres in self.df[index]['label']]
+            for category in categories:
+                label[category] = 1 
+            
 
         # text -> text_token
         text_tokens = self.text_tokenizer(text, max_length=self.max_length, add_special_tokens=True, truncation=True,
