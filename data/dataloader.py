@@ -5,6 +5,7 @@ import argparse
 import random
 import logging
 import json
+import jsonlines
 from PIL import Image
 import numpy as np
 import pandas as pd
@@ -76,6 +77,36 @@ def format_txt_file(content):
     content = re.sub(r"\s+[a-zA-Z]\s+", ' ', content)
     return content.lower().replace("\n", " ")
 
+# labels: {'Thriller', 'Musical', 'Music', 'Family', 'Drama', 'Short', 'Documentary', 
+#          'Mystery', 'Sport', 'History', 'Film-Noir', 'Action', 'Biography', 'Fantasy', 
+#          'Western', 'Romance', 'Comedy', 'Sci-Fi', 'War', 'Adventure', 'Horror', 'Animation', 'Crime'}
+label_mmimdb = {
+    'Action': 0,
+    'Adventure': 1,
+    'Animation': 2,
+    'Biography': 3,
+    'Comedy': 4,
+    'Crime': 5,
+    'Documentary': 6,
+    'Drama': 7,
+    'Family': 8,
+    'Fantasy': 9,
+    'Film-Noir': 10,
+    'History': 11,
+    'Horror': 12,
+    'Music': 13,
+    'Musical': 14,
+    'Mystery': 15,
+    'Romance': 16,
+    'Sci-Fi': 17,
+    'Short': 18,
+    'Sport': 19,
+    'Thriller': 20,
+    'War': 21,
+    'Western': 22
+}
+
+
 
 label_n24news = { 'Health': 0,
                   'Books': 1,
@@ -122,8 +153,15 @@ class MMDataset(Dataset):
         if args.dataset in ['Food101']:
             self.df = pd.read_csv(os.path.join(args.data_dir, labels),
                                   dtype={'id': str, 'text': str, 'annotation': str, 'label': int})
-        else:
+        elif args.dataset in ['n24news']:
             self.df = json.load(open(os.path.join(args.data_dir, labels), 'r', encoding='utf8'))
+        else:
+            self.df = []
+            dataset_path = os.path.join(args.data_dir, labels)
+
+            with jsonlines.open(dataset_path) as reader:
+                for line in reader:
+                    self.df.append(line)
 
         self.text_tokenizer = TextEncoder(pretrained_dir=args.pretrained_dir, text_encoder=args.text_encoder).get_tokenizer()
         self.image_tokenizer = ImageEncoder(pretrained_dir=args.pretrained_dir, image_encoder=args.image_encoder).get_tokenizer()
@@ -144,7 +182,8 @@ class MMDataset(Dataset):
             #text_path = self.args.data_dir + '/texts_txt/' + annotation + '/' + id.replace(".jpg", ".txt")
             text_path = self.args.data_dir + '/texts_txt/' + annotation + '/' + id.replace(".jpg", ".txt")
             text = format_txt_file(open(text_path).read())
-        else:
+
+        elif self.args.dataset in ['n24news']:
             if self.args.text_type in ['headline']:
                 text = self.df[index]['headline']
             elif self.args.text_type in ['caption']:
@@ -157,6 +196,11 @@ class MMDataset(Dataset):
                     text = format_txt_file(text)
             img_path = self.args.data_dir + '/imgs/' + self.df[index]['image_id'] + '.jpg'
             label = label_n24news[self.df[index]['section']]
+
+        else:
+            text = self.df[index]['text']
+            img_path = self.args.data_dir + '/mmimdb/dataset/' + self.df[index]['id'] + '.jpeg'
+            label = [label_mmimdb[genres] for genres in self.df[index]['label']]
 
         # text -> text_token
         text_tokens = self.text_tokenizer(text, max_length=self.max_length, add_special_tokens=True, truncation=True,
@@ -181,10 +225,14 @@ def MMDataLoader(args):
         train_data_set = MMDataset(args, 'train.csv')
         train_set, valid_set = torch.utils.data.random_split(train_data_set, [len(train_data_set)-5000, 5000])
         test_set = MMDataset(args, 'test.csv')
-    else: 
+    elif args.dataset in ['n24news']: 
         train_set = MMDataset(args, 'news/nytimes_train.json')
         valid_set = MMDataset(args, 'news/nytimes_dev.json')
         test_set = MMDataset(args, 'news/nytimes_test.json')
+    else:
+        train_set = MMDataset(args, 'train.jsonl')
+        valid_set = MMDataset(args, 'dev.jsonl')
+        test_set = MMDataset(args, 'test.jsonl')
 
     logger.info(f'Train Dataset: {len(train_set)}')
     logger.info(f'Valid Dataset: {len(valid_set)}')
