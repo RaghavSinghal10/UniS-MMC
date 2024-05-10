@@ -80,6 +80,7 @@ def format_txt_file(content):
 # labels: {'Thriller', 'Musical', 'Music', 'Family', 'Drama', 'Short', 'Documentary', 
 #          'Mystery', 'Sport', 'History', 'Film-Noir', 'Action', 'Biography', 'Fantasy', 
 #          'Western', 'Romance', 'Comedy', 'Sci-Fi', 'War', 'Adventure', 'Horror', 'Animation', 'Crime'}
+
 label_mmimdb = {
     'Action': 0,
     'Adventure': 1,
@@ -247,10 +248,10 @@ def MMDataLoader(args):
 
     if args.local_rank in [-1]:
         train_loader = DataLoader(train_set, batch_size=args.batch_size, num_workers=args.num_workers,
-                                  shuffle=False, pin_memory=False, drop_last=True)
+                                  shuffle=True, pin_memory=False, drop_last=True)
     else:
         train_sampler = DistributedSampler(train_set)
-        train_loader = DataLoader(train_set, batch_size=args.batch_size, num_workers=args.num_workers,
+        train_loader = DataLoader(train_set, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True,
                        sampler=train_sampler, pin_memory=False, drop_last=True)
 
     valid_loader = DataLoader(valid_set, batch_size=args.batch_size, num_workers=args.num_workers,
