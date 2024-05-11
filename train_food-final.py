@@ -104,6 +104,7 @@ parser.add_argument('--mixup_beta', type=float, default=0.15, help='beta for mix
 parser.add_argument('--mixup_s_thresh', type=float, default=0.5, help='s_thresh for mixup')
 
 parser.add_argument('--lr_scheduler', type=str, default='ReduceLROnPlateau', help='scheduler')
+parser.add_argument('--shuffle',action='store_true', help='shuffle or not')
 
 
 # parser.add_argument('--seeds', nargs='+', type=int,

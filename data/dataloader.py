@@ -248,10 +248,10 @@ def MMDataLoader(args):
 
     if args.local_rank in [-1]:
         train_loader = DataLoader(train_set, batch_size=args.batch_size, num_workers=args.num_workers,
-                                  shuffle=True, pin_memory=False, drop_last=True)
+                                  shuffle=args.shuffle, pin_memory=False, drop_last=True)
     else:
         train_sampler = DistributedSampler(train_set)
-        train_loader = DataLoader(train_set, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True,
+        train_loader = DataLoader(train_set, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=args.shuffle,
                        sampler=train_sampler, pin_memory=False, drop_last=True)
 
     valid_loader = DataLoader(valid_set, batch_size=args.batch_size, num_workers=args.num_workers,
