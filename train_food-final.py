@@ -105,6 +105,7 @@ parser.add_argument('--mixup_s_thresh', type=float, default=0.5, help='s_thresh 
 
 parser.add_argument('--lr_scheduler', type=str, default='ReduceLROnPlateau', help='scheduler')
 parser.add_argument('--shuffle',action='store_true', help='shuffle or not')
+parser.add_argument('--no_uni_pred', action='store_true', help='no_uni_pred or not')
 
 
 # parser.add_argument('--seeds', nargs='+', type=int,

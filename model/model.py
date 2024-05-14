@@ -153,6 +153,10 @@ class MMC(nn.Module):
             MMLoss_text = torch.mean(mixup_criterion(criterion, output_text, y_a, y_b, lam))
             MMLoss_image = torch.mean(mixup_criterion(criterion, output_image, y_a, y_b, lam))
         
+        if self.args.no_uni_pred:
+            MMLoss_text = 0
+            MMLoss_image = 0
+            
         MMLoss_sum = MMLoss_text + MMLoss_image + MMLoss_m
 
         if self.args.multi_mixup:
