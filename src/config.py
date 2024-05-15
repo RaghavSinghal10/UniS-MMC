@@ -152,13 +152,13 @@ class Config():
                 },
                 'brca': {
                     # training/validation/test parameters
-                    'num_epoch':300,   
+                    'num_epoch':1000,   
                     'patience': 25,
 
                     'lr_mm': 5e-3, # 5e-4
                     'weight_decay_other': 1e-3,
 
-                    'post_dim': 1000,
+                    'post_dim': 768,
                     'output_dim': 5,
                     'mm_dropout': 0.2,
                 },

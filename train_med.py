@@ -37,7 +37,7 @@ parser.add_argument('--data_path', type=str, default='/raid/nlp/rajak/Multimodal
 parser.add_argument('--save_model', type=bool, default=True, help='save model or not')
 parser.add_argument('--test_only', action='store_true', help='test only or not')
 parser.add_argument('--device', type=str, default='cuda', help='device')
-parser.add_argument('--seed', type=int, default=13, help='seed')
+parser.add_argument('--seed', type=int, default=69, help='seed')
 
 parser.add_argument('--cross_attention', action='store_true', help='cross attention or not')
 parser.add_argument('--image_embedding_mixup', action='store_true', help='image embedding mixup or not')
