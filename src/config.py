@@ -140,7 +140,7 @@ class Config():
                 },
                 'rosmap': {
                     # training/validation/test parameters
-                    'num_epoch': 150,
+                    'num_epoch': 1000,
                     'patience': 25,
 
                     'lr_mm': 2e-3, # 5e-3
@@ -152,7 +152,7 @@ class Config():
                 },
                 'brca': {
                     # training/validation/test parameters
-                    'num_epoch': 150,
+                    'num_epoch':300,   
                     'patience': 25,
 
                     'lr_mm': 5e-3, # 5e-4
