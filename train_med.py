@@ -61,6 +61,8 @@ args = parser.parse_args()
 config = Config(args)
 args = config.get_config()
 
+wandb.config.update(args)
+
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.cuda.manual_seed(args.seed)
@@ -150,20 +152,29 @@ def get_scheduler(optimizer, args):
     elif args.lr_scheduler == "cosine":
         return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epoch)
     
-def train_epoch(data_list, label, model, optimizer):
+def train_epoch(data_list, label, model, optimizer, epoch):
     model.train()
     optimizer.zero_grad()
     #loss, _ = model(data_list, label)
-    loss, loss_m, logit = model(data_list, label)
-    loss = torch.mean(loss)
+    
+    if epoch < int(args.mixup_pct * args.num_epoch):
+        loss, loss_m, logit = model(data_list, label, use_soft_clip=False)
+        loss = torch.mean(loss)
+    else:
+        loss, loss_m, logit = model(data_list, label, use_soft_clip=True)
+        loss = torch.mean(loss)
+
     loss.backward()
+
+    wandb.log({"final ce loss": loss_m.sum().detach().cpu().item()})
+    wandb.log({"training loss": loss.detach().cpu().item()})
     # for param in model.parameters():
     #     print(param.grad)
     # exit()
     optimizer.step()
-    for param in model.parameters():
-        print(param.grad)
-        break
+    # for param in model.parameters():
+    #     print(param.grad)
+    #     break
 
 def test_epoch(data_list, model):
     model.eval()
@@ -234,7 +245,7 @@ def main():
     test_f1_macro_history = []
     
     for epoch in range(args.num_epoch):
-        train_epoch(data_tr_list, labels_tr_tensor, model, optimizer)
+        train_epoch(data_tr_list, labels_tr_tensor, model, optimizer, epoch)
         scheduler.step()
 
         if epoch % test_inverval == 0:
@@ -253,6 +264,14 @@ def main():
                 max_test_acc = max(test_acc_history)
                 max_test_f1 = max(test_f1_history)
                 max_test_auc = max(test_auc_history)
+
+                wandb.log({"test acc": test_acc})
+                wandb.log({"test f1": test_f1})
+                wandb.log({"test auc": test_auc})
+
+                wandb.log({"max test acc": max_test_acc})
+                wandb.log({"max test f1": max_test_f1})
+                wandb.log({"max test auc": max_test_auc})
 
                 print("Test ACC: {:.5f}".format(test_acc))
                 print("Test F1: {:.5f}".format(test_f1))
@@ -274,6 +293,14 @@ def main():
                 max_test_acc = max(test_acc_history)
                 max_test_f1_weighted = max(test_f1_weighted_history)
                 max_test_f1_macro = max(test_f1_macro_history)
+
+                wandb.log({"test acc": test_acc})
+                wandb.log({"test f1 weighted": test_f1_weighted})
+                wandb.log({"test f1 macro": test_f1_macro})
+
+                wandb.log({"max test acc": max_test_acc})
+                wandb.log({"max test f1 weighted": max_test_f1_weighted})
+                wandb.log({"max test f1 macro": max_test_f1_macro})
 
                 print("Test ACC: {:.5f}".format(test_acc))
                 print("Test F1 weighted: {:.5f}".format(test_f1_weighted))

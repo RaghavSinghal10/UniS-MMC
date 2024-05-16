@@ -95,27 +95,35 @@ class MMC_Med(nn.Module):
         if self.args.multi_mixup:
 
             if not use_soft_clip:
-                
-                input_1_new = input.clone()
-                input_2_new = input.clone()
-                input_3_new = input.clone()
+                print("m3co")
+                input_1_new = input_1.clone()
+                input_2_new = input_2.clone()
+                input_3_new = input_3.clone()
 
-                input_1_mixup, perm_input_1, betas_input_1, select_input_1 = mixco_image(input_1_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
-                input_2_mixup, perm_input_2, betas_input_2, select_input_2 = mixco_text(input_2_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
-                input_3_mixup, perm_input_3, betas_input_3, select_input_3 = mixco_text(input_3_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+                input_1_mixup, perm_1, betas_1, select_1 = mixco_text(input_1_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+                input_2_mixup, perm_2, betas_2, select_2 = mixco_text(input_2_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+                input_3_mixup, perm_3, betas_3, select_3 = mixco_text(input_3_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
 
-                MMLoss_Contrastive_1 = mixco_nce(input_1_mixup, input_2_new, perm=perm_input_1, betas=betas_input_1)
-                MMLoss_Contrastive_2 = mixco_nce(input_2_mixup, input_3_new, perm=perm_input_2, betas=betas_input_2)
-                MMLoss_Contrastive_3 = mixco_nce(input_3_mixup, input_1_new, perm=perm_input_3, betas=betas_input_3)
+                emb_1_new = self.fe_1(input_1_new)
+                emb_2_new = self.fe_2(input_2_new)
+                emb_3_new = self.fe_3(input_3_new)
+
+                emb_1_mixup = self.fe_1(input_1_mixup)
+                emb_2_mixup = self.fe_2(input_2_mixup)
+                emb_3_mixup = self.fe_3(input_3_mixup)
+
+                MMLoss_Contrastive_1 = mixco_nce(emb_1_mixup, emb_2_new, perm=perm_1, betas=betas_1)
+                MMLoss_Contrastive_2 = mixco_nce(emb_2_mixup, emb_3_new, perm=perm_2, betas=betas_2)
+                MMLoss_Contrastive_3 = mixco_nce(emb_3_mixup, emb_1_new, perm=perm_3, betas=betas_3)
 
                 MMLoss_Contrastive = MMLoss_Contrastive_1 + MMLoss_Contrastive_2 + MMLoss_Contrastive_3
                 MMLoss_sum = MMLoss_sum + self.args.lambda_mixup* MMLoss_Contrastive
 
             else:
-                
-                MMLoss_Contrastive_1 = soft_clip_loss(input_1, input_2)
-                MMLoss_Contrastive_2 = soft_clip_loss(input_2, input_3)
-                MMLoss_Contrastive_3 = soft_clip_loss(input_3, input_1)
+                print("softclip")
+                MMLoss_Contrastive_1 = soft_clip_loss(emb_1, emb_2)
+                MMLoss_Contrastive_2 = soft_clip_loss(emb_2, emb_3)
+                MMLoss_Contrastive_3 = soft_clip_loss(emb_3, emb_1)
 
                 MMLoss_Contrastive = MMLoss_Contrastive_1 + MMLoss_Contrastive_2 + MMLoss_Contrastive_3
                 MMLoss_sum = MMLoss_sum + self.args.lambda_mixup* MMLoss_Contrastive
