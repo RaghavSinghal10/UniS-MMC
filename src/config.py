@@ -143,10 +143,10 @@ class Config():
                     'num_epoch': 1000,
                     'patience': 25,
 
-                    'lr_mm': 2e-4, # 5e-3
+                    'lr_mm': 2e-3, # 5e-3
                     'weight_decay_other': 1e-3,
 
-                    'post_dim': 768,
+                    'post_dim': 1000,
                     'output_dim': 2,
                     'mm_dropout': 0.5, #0.1,
                 },
@@ -158,7 +158,7 @@ class Config():
                     'lr_mm': 5e-3, # 5e-4
                     'weight_decay_other': 1e-3,
 
-                    'post_dim': 768,
+                    'post_dim': 1000,
                     'output_dim': 5,
                     'mm_dropout': 0.5,
                 },

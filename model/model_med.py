@@ -100,17 +100,13 @@ class MMC_Med(nn.Module):
                 input_2_new = input_2.clone()
                 input_3_new = input_3.clone()
 
-                input_1_mixup, perm_1, betas_1, select_1 = mixco_text(input_1_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
-                input_2_mixup, perm_2, betas_2, select_2 = mixco_text(input_2_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
-                input_3_mixup, perm_3, betas_3, select_3 = mixco_text(input_3_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
-
                 emb_1_new = self.fe_1(input_1_new)
                 emb_2_new = self.fe_2(input_2_new)
                 emb_3_new = self.fe_3(input_3_new)
 
-                emb_1_mixup = self.fe_1(input_1_mixup)
-                emb_2_mixup = self.fe_2(input_2_mixup)
-                emb_3_mixup = self.fe_3(input_3_mixup)
+                emb_1_mixup, perm_1, betas_1, select_1 = mixco_text(emb_1_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+                emb_2_mixup, perm_2, betas_2, select_2 = mixco_text(emb_2_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+                emb_3_mixup, perm_3, betas_3, select_3 = mixco_text(emb_3_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
 
                 MMLoss_Contrastive_1 = mixco_nce(emb_1_mixup, emb_2_new, perm=perm_1, betas=betas_1)
                 MMLoss_Contrastive_2 = mixco_nce(emb_2_mixup, emb_3_new, perm=perm_2, betas=betas_2)
