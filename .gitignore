@@ -8,7 +8,5 @@ src/__pycache__/
 wandb/
 practice_code/.venv/
 multimodal/
-notebooks/classified_images_train/
-notebooks/classified_images_test/
-notebooks/classified_text_test/
 notebooks/
+results/
