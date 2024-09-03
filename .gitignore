@@ -8,5 +8,7 @@ src/__pycache__/
 wandb/
 practice_code/.venv/
 multimodal/
+notebooks/
+results/
 notebooks-dgx6/
 saved-models-for-visualization/

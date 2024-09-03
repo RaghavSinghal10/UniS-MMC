@@ -32,15 +32,19 @@ class MMC_Med(nn.Module):
         # self.fe_2 = LinearLayer(input_dim_list[1], args.post_dim)
         # self.fe_3 = LinearLayer(input_dim_list[2], args.post_dim)
 
-        self.fe_1 = Classifier(args.mm_dropout, input_dim_list[0], args.post_dim, args.post_dim)
-        self.fe_2 = Classifier(args.mm_dropout, input_dim_list[1], args.post_dim, args.post_dim)
-        self.fe_3 = Classifier(args.mm_dropout, input_dim_list[2], args.post_dim, args.post_dim)
+        # self.fe_1 = Classifier(args.mm_dropout, input_dim_list[0], args.post_dim, args.post_dim)
+        # self.fe_2 = Classifier(args.mm_dropout, input_dim_list[1], args.post_dim, args.post_dim)
+        # self.fe_3 = Classifier(args.mm_dropout, input_dim_list[2], args.post_dim, args.post_dim)
 
-        self.cl_1 = Classifier(args.mm_dropout, args.post_dim, args.post_dim, args.output_dim)
-        self.cl_2 = Classifier(args.mm_dropout, args.post_dim, args.post_dim, args.output_dim)
-        self.cl_3 = Classifier(args.mm_dropout, args.post_dim, args.post_dim, args.output_dim)
+        self.fe_1 = Feature_Encoder(input_dim_list[0], args.emb_dim)
+        self.fe_2 = Feature_Encoder(input_dim_list[1], args.emb_dim)
+        self.fe_3 = Feature_Encoder(input_dim_list[2], args.emb_dim)
 
-        self.mm_classfier = Classifier(args.mm_dropout, args.post_dim*3, args.post_dim, args.output_dim)
+        self.cl_1 = Classifier(args.mm_dropout, args.emb_dim, args.post_dim, args.output_dim)
+        self.cl_2 = Classifier(args.mm_dropout, args.emb_dim, args.post_dim, args.output_dim)
+        self.cl_3 = Classifier(args.mm_dropout, args.emb_dim, args.post_dim, args.output_dim)
+
+        self.mm_classfier = Classifier(args.mm_dropout, args.emb_dim*3, args.post_dim, args.output_dim)
 
     def forward(self, data_list=None, label=None, infer=False, use_soft_clip=False):
 
@@ -78,6 +82,7 @@ class MMC_Med(nn.Module):
             fusion = torch.cat([emb_1, emb_2, emb_3], dim=-1)
             output_mm = self.mm_classfier(fusion)
 
+
             MMloss_1 = criterion(output_1, label)
             MMloss_2 = criterion(output_2, label)
             MMloss_3 = criterion(output_3, label)
@@ -104,9 +109,18 @@ class MMC_Med(nn.Module):
                 emb_2_new = self.fe_2(input_2_new)
                 emb_3_new = self.fe_3(input_3_new)
 
+
                 emb_1_mixup, perm_1, betas_1, select_1 = mixco_text(emb_1_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
                 emb_2_mixup, perm_2, betas_2, select_2 = mixco_text(emb_2_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
                 emb_3_mixup, perm_3, betas_3, select_3 = mixco_text(emb_3_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+
+                # input_1_mixup, perm_1, betas_1, select_1 = mixco_text(input_1_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+                # input_2_mixup, perm_2, betas_2, select_2 = mixco_text(input_2_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+                # input_3_mixup, perm_3, betas_3, select_3 = mixco_text(input_3_new, beta=self.args.mixup_beta, s_thresh=self.args.mixup_s_thresh)
+
+                # emb_1_mixup = self.fe_1(input_1_mixup)
+                # emb_2_mixup = self.fe_2(input_2_mixup)
+                # emb_3_mixup = self.fe_3(input_3_mixup)
 
                 MMLoss_Contrastive_1 = mixco_nce(emb_1_mixup, emb_2_new, perm=perm_1, betas=betas_1)
                 MMLoss_Contrastive_2 = mixco_nce(emb_2_mixup, emb_3_new, perm=perm_2, betas=betas_2)
@@ -145,10 +159,14 @@ class Classifier(nn.Module):
         return output  
      
 class Feature_Encoder(nn.Module):
-    def __init__(self, in_dim, post_dim):
-        super(Classifier, self).__init__()
-        self.fe = LinearLayer(in_dim, post_dim)
+    def __init__(self, in_dim, emb_dim):
+        super(Feature_Encoder, self).__init__()
+        self.fe1 = LinearLayer(in_dim, emb_dim)
+        self.fe2 = LinearLayer(emb_dim, emb_dim)
 
     def forward(self, input):
-        output = self.fe(input)
+        output = self.fe1(input)
+        output = F.relu(output, inplace=False)
+        output = self.fe2(output)
+        # output = F.relu(output, inplace=False)
         return output

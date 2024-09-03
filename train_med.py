@@ -30,7 +30,6 @@ wandb.init(project='MMC-med')
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--dataset', type=str, default='rosmap', help='support N24News/Food101')
-parser.add_argument('--batch_size', type=int, default=32, help='batch_size')                                                    
 parser.add_argument('--seeds', nargs='+', type=int, help='set seeds for multiple runs!')
 parser.add_argument('--model_path', type=str, default='/raid/nlp/rajak/Multimodal/UniS-MMC/datasets', help='path to load model parameters')
 parser.add_argument('--data_path', type=str, default='/raid/nlp/rajak/Multimodal/UniS-MMC/datasets', help='path to load data')
