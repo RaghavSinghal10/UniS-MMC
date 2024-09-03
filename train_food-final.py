@@ -36,7 +36,7 @@ parser.add_argument('--name', type=str, default='MMC',
                         help='project name')
 parser.add_argument('--dataset', type=str, default='n24news',
                     help='support N24News/Food101')
-parser.add_argument('--text_type', type=str, default='abstract',
+parser.add_argument('--text_type', type=str, default='headline',
                     help='support headline/caption/abstract')
 parser.add_argument('--mmc', type=str, default='UniSMMC',
                     help='support UniSMMC/UnSupMMC/SupMMC')
@@ -52,7 +52,7 @@ parser.add_argument('--valid_step', type=int, default=50,
                     help='valid_step')              
 parser.add_argument('--max_length', type=int, default=512,
                     help='max_length')
-parser.add_argument('--text_encoder', type=str, default='bert_base',
+parser.add_argument('--text_encoder', type=str, default='roberta_base',
                     help='bert_base/roberta_base/bert_large')
 parser.add_argument('--image_encoder', type=str, default='vit_base',
                     help='vit_base/vit_large')
