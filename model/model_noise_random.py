@@ -75,7 +75,8 @@ class MMC(nn.Module):
             self.text_classfier = Classifier(args.text_dropout, args.text_out, args.post_dim, args.output_dim)
         self.mm_classfier = Classifier(args.mm_dropout, args.text_out + args.img_out, args.post_dim, args.output_dim)
 
-    def forward(self, text=None, image=None, data_list=None, label=None, infer=False, use_soft_clip=False, noise=False, random=False):
+    def forward(self, text=None, image=None, data_list=None, label=None, infer=False, use_soft_clip=False, 
+                noise_text=False, random_text=False, noise_image=False, random_image=False):
 
         if self.args.dataset == 'mmimdb':
             freqs = [2154, 1609, 586, 772, 5105, 2287, 1194, 8414, 975, 1162, 202, 663, 1603, 632, 503, 1231, 3226, 1212, 281, 379, 3110, 804, 423]
@@ -90,11 +91,11 @@ class MMC(nn.Module):
             criterion = torch.nn.CrossEntropyLoss(reduction='none')
 
         if not infer:
-            text = self.text_encoder(text=text, noise=noise, random=random)
+            text = self.text_encoder(text=text, noise=noise_text, random=random_text)
             image = torch.squeeze(image, 1)
 
             if self.args.image_embedding_mixup:
-                image = self.image_encoder(pixel_values=image, noise=noise, random=random)
+                image = self.image_encoder(pixel_values=image, noise=noise_image, random=random_image)
 
             if not self.args.image_mixup and not self.args.text_mixup:
                 mixed_input_image, mixed_text_embedding, y_a, y_b, lam = image, text, label, label, 1
@@ -114,7 +115,7 @@ class MMC(nn.Module):
                                                                                 mixup_text=self.args.text_mixup, use_cuda=True)
 
             if not self.args.image_embedding_mixup:
-                image = self.image_encoder(pixel_values=mixed_input_image, noise=noise, random=random)
+                image = self.image_encoder(pixel_values=mixed_input_image, noise=noise_image, random=random_image)
             
             output_text = self.text_classfier(mixed_text_embedding[:, 0, :])
             output_image = self.image_classfier(image[:, 0, :])
@@ -124,9 +125,9 @@ class MMC(nn.Module):
 
 
         if infer:
-            text = self.text_encoder(text=text, noise=noise, random=random)
+            text = self.text_encoder(text=text, noise=noise_text, random=random_text)
             image = torch.squeeze(image, 1)
-            image = self.image_encoder(pixel_values=image, noise=noise, random=random)
+            image = self.image_encoder(pixel_values=image, noise=noise_image, random=random_image)
             output_text = self.text_classfier(text[:, 0, :])
             output_image = self.image_classfier(image[:, 0, :])
             fusion = torch.cat([text[:, 0, :], image[:, 0, :]], dim=-1)
@@ -205,8 +206,8 @@ class MMC(nn.Module):
         return MMLoss_sum, MMLoss_m, output_mm
 
 
-    def infer(self, text=None, image=None, data_list=None):
-        MMlogit = self.forward(text, image, data_list, infer=True)
+    def infer(self, text=None, image=None, data_list=None, noise_text=False, random_text=False, noise_image=False, random_image=False):
+        MMlogit = self.forward(text, image, data_list, infer=True, noise_text=noise_text, random_text=random_text, noise_image=noise_image, random_image=random_image)
         return MMlogit
     
 class Classifier(nn.Module):

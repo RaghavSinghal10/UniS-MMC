@@ -11,7 +11,7 @@ def collect_metrics(dataset, y_true, y_pred):
         uf1 = f1_score(y_true, y_pred.argmax(1), average='macro')
 
         eval_results = {
-            "acc": round(acc, 4),
+            "acc": round(acc, 5),
             "tp2acc": round(tp2acc, 4),
             "tp5acc": round(tp5acc, 4),
             "wf1": round(wf1, 4),

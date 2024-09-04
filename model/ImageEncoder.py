@@ -41,12 +41,15 @@ class ImageEncoder(nn.Module):
         """
         pixel_values:
         """
-        last_hidden_states = self.model(pixel_values=pixel_values).last_hidden_state
 
         if random:
-            return torch.rand(last_hidden_states.shape).cuda()
+            pixel_values = torch.rand(pixel_values.shape).cuda()
         else:
-            return last_hidden_states
+            pixel_values = pixel_values
+
+        last_hidden_states = self.model(pixel_values=pixel_values).last_hidden_state
+
+        return last_hidden_states
 
 
 if __name__ == "__main__":
