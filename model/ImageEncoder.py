@@ -43,7 +43,7 @@ class ImageEncoder(nn.Module):
         """
 
         if random:
-            pixel_values = torch.rand(pixel_values.shape).cuda()
+            pixel_values = torch.normal(mean=-0.2, std=0.6, size=pixel_values.size()).to(pixel_values.device)
         else:
             pixel_values = pixel_values
 

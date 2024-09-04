@@ -102,9 +102,9 @@ class TextEncoder(nn.Module):
             last_hidden_states = self.model(input_ids=input_ids, attention_mask=input_mask, token_type_ids=segment_ids)[0]
             # print(f'last hidden state size: {last_hidden_states.shape}')
             # exit()
-        
+
         if random:
-            last_hidden_states = torch.rand(last_hidden_states.shape).cuda()
+            last_hidden_states = torch.normal(mean=0.039, std=0.74, size=last_hidden_states.shape).cuda()
         else:
             last_hidden_states = last_hidden_states
             
