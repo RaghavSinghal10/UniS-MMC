@@ -73,7 +73,7 @@ class TextEncoder(nn.Module):
     def get_tokenize(self):
         return self.tokenizer.tokenize
 
-    def forward(self, text):
+    def forward(self, text, noise=False, random=False):
         """
         text: (batch_size, 3, seq_len)
         3: input_ids, input_mask, segment_ids
@@ -103,7 +103,12 @@ class TextEncoder(nn.Module):
             # print(f'last hidden state size: {last_hidden_states.shape}')
             # exit()
 
-        return last_hidden_states
+        if random:
+            # return random array of same shape, put to cuda
+            return torch.rand(last_hidden_states.shape).cuda()
+        else:
+            # return random array of same shape, put to cuda
+            return torch.rand(last_hidden_states.shape).cuda()
 
 
 if __name__ == "__main__":

@@ -37,13 +37,16 @@ class ImageEncoder(nn.Module):
     def get_tokenizer(self):
         return self.tokenizer
 
-    def forward(self, pixel_values):
+    def forward(self, pixel_values, noise=False, random=False):
         """
         pixel_values:
         """
         last_hidden_states = self.model(pixel_values=pixel_values).last_hidden_state
 
-        return last_hidden_states
+        if random:
+            return torch.rand(last_hidden_states.shape).cuda()
+        else:
+            return last_hidden_states
 
 
 if __name__ == "__main__":
